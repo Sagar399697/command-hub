@@ -1,5 +1,5 @@
-const CACHE_NAME = "command-hub-v4";
-const SHELL_ASSETS = ["./", "./index.html", "./vault.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
+const CACHE_NAME = "command-hub-v5";
+const SHELL_ASSETS = ["./", "./index.html", "./vault.html", "./research.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(SHELL_ASSETS)));
