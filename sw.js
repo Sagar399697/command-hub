@@ -1,5 +1,5 @@
-const CACHE_NAME = "command-hub-v3";
-const SHELL_ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
+const CACHE_NAME = "command-hub-v4";
+const SHELL_ASSETS = ["./", "./index.html", "./vault.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(SHELL_ASSETS)));
@@ -19,22 +19,23 @@ self.addEventListener("fetch", event => {
   const req = event.request;
   if (req.method !== "GET") return;
   const url = new URL(req.url);
-  if (url.origin !== self.location.origin) return; // Never intercept Google Apps Script API calls
+  if (url.origin !== self.location.origin) return;
 
-  // Network-first for HTML documents so UI updates propagate cleanly
   if (req.mode === "navigate" || req.destination === "document") {
+    const cacheKey = url.pathname.endsWith("/") ? "./index.html" : url.pathname;
     event.respondWith(
       fetch(req)
         .then(res => {
-          const copy = res.clone();
-          caches.open(CACHE_NAME).then(c => c.put("./index.html", copy));
+          if (res && res.ok) {
+            const copy = res.clone();
+            caches.open(CACHE_NAME).then(c => c.put(cacheKey, copy));
+          }
           return res;
         })
-        .catch(() => caches.match("./index.html"))
+        .catch(() => caches.match(cacheKey).then(m => m || caches.match("./index.html")))
     );
     return;
   }
 
-  // Cache-first for static shell assets (icons, manifest)
   event.respondWith(caches.match(req).then(cached => cached || fetch(req)));
 });
