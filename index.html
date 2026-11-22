@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Command Hub</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" type="image/png" href="./icon-192.png">
+  <style>
+    :root {
+      --bg: #f8fafc; --surface: #ffffff; --border: #e2e8f0;
+      --ink: #0f172a; --muted: #64748b; --accent: #1d4ed8;
+      --ok: #15803d; --ok-bg: #f0fdf4; --warn: #b45309; --warn-bg: #fffbeb;
+      --danger: #b91c1c; --danger-bg: #fef2f2;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      margin: 0; background: var(--bg); color: var(--ink);
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      padding-bottom: 76px;
+    }
+    header {
+      position: sticky; top: 0; z-index: 20; background: #0f172a; color: #fff;
+      padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    }
+    header h1 { margin: 0; font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
+    .hdr-right { display: flex; align-items: center; gap: 8px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; display: inline-block; }
+    .dot.offline { background: #f59e0b; }
+    .pill { font-size: 11px; font-weight: 600; padding: 4px 9px; border-radius: 999px; background: rgba(255,255,255,0.14); color: #fff; border: none; cursor: pointer; }
+    .pill-install { background: #2563eb; }
+    main { max-width: 600px; margin: 0 auto; padding: 14px 12px; }
+    .card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      padding: 16px; margin-bottom: 12px;
+    }
+    label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin: 10px 0 4px; }
+    input, select, textarea {
+      width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+      font-size: 15px; font-family: inherit; color: var(--ink); background: #fff;
+    }
+    textarea { min-height: 82px; resize: vertical; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    button.primary {
+      width: 100%; margin-top: 12px; min-height: 44px; border: none; border-radius: 8px;
+      background: var(--accent); color: #fff; font-size: 14px; font-weight: 600; cursor: pointer;
+    }
+    button.ghost {
+      padding: 7px 11px; border: 1px solid var(--border); border-radius: 7px;
+      background: #fff; color: var(--ink); font-size: 12px; font-weight: 600; cursor: pointer;
+    }
+    .sync-bar {
+      display: flex; justify-content: space-between; align-items: center; gap: 8px;
+      padding: 10px 12px; border-radius: 8px; font-size: 12.5px; margin-bottom: 12px;
+      background: var(--warn-bg); color: var(--warn); border: 1px solid #fde68a;
+    }
+    .item {
+      border-bottom: 1px solid var(--border); padding: 11px 0;
+    }
+    .item:last-child { border-bottom: none; padding-bottom: 0; }
+    .item-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+    .badge { font-size: 10.5px; font-weight: 700; text-transform: uppercase; padding: 2px 7px; border-radius: 999px; background: #eff6ff; color: var(--accent); }
+    .badge-pend { background: var(--warn-bg); color: var(--warn); }
+    .muted { font-size: 12px; color: var(--muted); }
+    .app-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .app-tile {
+      display: flex; flex-direction: column; justify-content: space-between;
+      border: 1px solid var(--border); border-radius: 10px; padding: 14px; background: #fff;
+      text-decoration: none; color: var(--ink); min-height: 92px; position: relative;
+    }
+    .app-del { position: absolute; top: 8px; right: 8px; border: none; background: transparent; color: var(--muted); font-size: 15px; cursor: pointer; }
+    .alert { padding: 10px 12px; border-radius: 8px; font-size: 13px; margin-top: 10px; }
+    .alert-ok { background: var(--ok-bg); color: var(--ok); border: 1px solid #bbf7d0; }
+    .alert-err { background: var(--danger-bg); color: var(--danger); border: 1px solid #fecaca; }
+    nav {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 20;
+      background: #fff; border-top: 1px solid var(--border);
+      display: grid; grid-template-columns: repeat(3, 1fr); padding: 6px 0 calc(6px + env(safe-area-inset-bottom));
+    }
+    nav button {
+      border: none; background: transparent; padding: 8px 4px; font-size: 12px;
+      font-weight: 600; color: var(--muted); cursor: pointer;
+    }
+    nav button.active { color: var(--accent); }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1><span id="netDot" class="dot"></span> Command Hub</h1>
+    <div class="hdr-right">
+      <button id="btnInstall" class="pill pill-install hidden" type="button" onclick="triggerInstall()">Install App</button>
+      <button class="pill" type="button" onclick="syncAll(true)">Sync</button>
+    </div>
+  </header>
+
+  <main>
+    <div id="outboxBanner" class="sync-bar hidden">
+      <span id="outboxText">0 item(s) waiting offline</span>
+      <button class="ghost" type="button" onclick="syncAll(true)">Sync Now</button>
+    </div>
+
+    <!-- TAB 1: OFFLINE CAPTURE & INBOX -->
+    <section id="tabCapture">
+      <div class="card">
+        <strong style="font-size:14px;">Quick Offline Capture</strong>
+        <div class="row">
+          <div>
+            <label for="inKind">Type</label>
+            <select id="inKind" onchange="toggleAmountField()">
+              <option value="note">Note / Idea</option>
+              <option value="task">Task</option>
+              <option value="expense">Expense (₹)</option>
+            </select>
+          </div>
+          <div id="amtWrap" class="hidden">
+            <label for="inAmount">Amount (₹)</label>
+            <input id="inAmount" type="number" step="0.01" placeholder="e.g., 450">
+          </div>
+        </div>
+        <label for="inTitle">Title</label>
+        <input id="inTitle" type="text" placeholder="What do you want to capture?">
+        <label for="inBody">Details (Optional)</label>
+        <textarea id="inBody" placeholder="Works 100% offline — queued in IndexedDB and synced automatically..."></textarea>
+        <label for="inTags">Tags (Optional)</label>
+        <input id="inTags" type="text" placeholder="#evaltrack #personal">
+        <button class="primary" type="button" onclick="handleCapture()">Save Capture</button>
+        <div id="capMsg" class="hidden"></div>
+      </div>
+
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <strong style="font-size:14px;">Recent Captures</strong>
+          <span id="syncStamp" class="muted">Offline cache ready</span>
+        </div>
+        <input id="filterBox" type="text" placeholder="Filter notes, tasks, or #tags..." oninput="renderFeed()" style="margin-bottom:8px;">
+        <div id="feedList"><p class="muted">No captures yet.</p></div>
+      </div>
+    </section>
+
+    <!-- TAB 2: UNIFIED AUTOMATION LAUNCHER -->
+    <section id="tabApps" class="hidden">
+      <div class="card">
+        <strong style="font-size:14px;">Pinned Automation Tools</strong>
+        <p class="muted" style="margin:4px 0 12px;">Pin your B5 Ephemeral Vault, C2 Status Page, or C3 TOTP Authenticator here for 1-tap access.</p>
+        <div id="appsGrid" class="app-grid"></div>
+      </div>
+
+      <div class="card">
+        <strong style="font-size:14px;">+ Add Tool Shortcut</strong>
+        <label for="scName">App Name</label>
+        <input id="scName" type="text" placeholder="e.g., Ephemeral Vault (B5)">
+        <label for="scUrl">URL (Use /a/*/macros/s/... for Apps Script UIs)</label>
+        <input id="scUrl" type="url" placeholder="https://script.google.com/a/*/macros/s/.../exec">
+        <label for="scBadge">Short Badge</label>
+        <input id="scBadge" type="text" placeholder="e.g., VAULT, TOTP, STATUS">
+        <button class="primary" type="button" onclick="handleAddShortcut()">Save Shortcut</button>
+        <div id="scMsg" class="hidden"></div>
+      </div>
+    </section>
+
+    <!-- TAB 3: CONNECTION SETTINGS -->
+    <section id="tabSettings" class="hidden">
+      <div class="card">
+        <strong style="font-size:14px;">Apps Script Sync Backend</strong>
+        <label for="cfgUrl">Web App API URL (/exec)</label>
+        <input id="cfgUrl" type="url" placeholder="https://script.google.com/macros/s/.../exec">
+        <label for="cfgKey">APP_SECRET</label>
+        <input id="cfgKey" type="password" placeholder="Your APP_SECRET from Script Properties">
+        <button class="primary" type="button" onclick="saveConfigAndTest()">Save & Test Connection</button>
+        <div id="cfgMsg" class="hidden"></div>
+      </div>
+    </section>
+  </main>
+
+  <nav>
+    <button id="navCapture" class="active" type="button" onclick="switchTab('Capture')">Capture</button>
+    <button id="navApps" type="button" onclick="switchTab('Apps')">Apps</button>
+    <button id="navSettings" type="button" onclick="switchTab('Settings')">Settings</button>
+  </nav>
+
+  <script>
+    const DB_NAME = "c4_command_hub_db";
+    const DB_VER = 1;
+    const CFG_KEY = "c4_hub_cfg";
+    const SC_KEY = "c4_hub_shortcuts";
+
+    let deferredInstallPrompt = null;
+    let cachedSyncedItems = [];
+    let cachedOutboxItems = [];
+
+    /* --- IndexedDB Minimal Promise Wrapper --- */
+    function openDb() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open(DB_NAME, DB_VER);
+        req.onupgradeneeded = () => {
+          const db = req.result;
+          if (!db.objectStoreNames.contains("outbox")) db.createObjectStore("outbox", { keyPath: "client_id" });
+          if (!db.objectStoreNames.contains("synced")) db.createObjectStore("synced", { keyPath: "client_id" });
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    async function idbAll(store) {
+      const db = await openDb();
+      return new Promise((resolve, reject) => {
+        const req = db.transaction(store, "readonly").objectStore(store).getAll();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    async function idbPut(store, obj) {
+      const db = await openDb();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(store, "readwrite");
+        tx.objectStore(store).put(obj);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    }
+
+    async function idbDelete(store, key) {
+      const db = await openDb();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(store, "readwrite");
+        tx.objectStore(store).delete(key);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    }
+
+    async function idbReplaceStore(store, list) {
+      const db = await openDb();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(store, "readwrite");
+        const os = tx.objectStore(store);
+        os.clear();
+        list.forEach(item => os.put(item));
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    }
+
+    /* --- CORS-Safe Apps Script Fetch (text/plain avoids OPTIONS preflight) --- */
+    function getConfig() {
+      try { return JSON.parse(localStorage.getItem(CFG_KEY) || "{}"); } catch (e) { return {}; }
+    }
+
+    async function callApi(payload) {
+      const cfg = getConfig();
+      if (!cfg.url || !cfg.key) throw new Error("Configure API URL and APP_SECRET in the Settings tab first.");
+      const res = await fetch(cfg.url, {
+        method: "POST",
+        credentials: "omit",
+        redirect: "follow",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(Object.assign({ api_key: cfg.key }, payload))
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error || "API call failed.");
+      return json;
+    }
+
+    /* --- Init, Service Worker & Install Prompt --- */
+    window.addEventListener("beforeinstallprompt", e => {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+      document.getElementById("btnInstall").classList.remove("hidden");
+    });
+
+    async function triggerInstall() {
+      if (!deferredInstallPrompt) return;
+      deferredInstallPrompt.prompt();
+      await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
+      document.getElementById("btnInstall").classList.add("hidden");
+    }
+
+    window.addEventListener("online", () => { updateNetIndicator(); syncAll(false); });
+    window.addEventListener("offline", updateNetIndicator);
+
+    window.addEventListener("load", async () => {
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("./sw.js").catch(() => {});
+      }
+      updateNetIndicator();
+
+      const cfg = getConfig();
+      if (cfg.url) document.getElementById("cfgUrl").value = cfg.url;
+      if (cfg.key) document.getElementById("cfgKey").value = cfg.key;
+
+      await reloadLocalData();
+      renderShortcuts();
+
+      if (navigator.onLine && cfg.url && cfg.key) {
+        syncAll(false);
+      } else if (!cfg.url || !cfg.key) {
+        document.getElementById("syncStamp").textContent = "Local-only (set API in Settings)";
+      }
+    });
+
+    function updateNetIndicator() {
+      document.getElementById("netDot").classList.toggle("offline", !navigator.onLine);
+    }
+
+    function switchTab(name) {
+      ["Capture", "Apps", "Settings"].forEach(t => {
+        document.getElementById("tab" + t).classList.toggle("hidden", t !== name);
+        document.getElementById("nav" + t).classList.toggle("active", t === name);
+      });
+    }
+
+    function toggleAmountField() {
+      document.getElementById("amtWrap").classList.toggle("hidden", document.getElementById("inKind").value !== "expense");
+    }
+
+    /* --- Offline-First Capture & Auto-Sync --- */
+    async function handleCapture() {
+      const title = document.getElementById("inTitle").value.trim();
+      const body = document.getElementById("inBody").value.trim();
+      const kind = document.getElementById("inKind").value;
+      const amount = kind === "expense" ? document.getElementById("inAmount").value.trim() : "";
+      const tags = document.getElementById("inTags").value.trim();
+
+      if (!title && !body) return showMsg("capMsg", "Enter a title or note first.", true);
+
+      const record = {
+        client_id: (crypto.randomUUID ? crypto.randomUUID() : "c4_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8)),
+        kind: kind,
+        title: title || body.slice(0, 50),
+        body: body,
+        amount: amount,
+        tags: tags,
+        created_at: new Date().toLocaleString("en-IN", { hour12: false }),
+        pending: true
+      };
+
+      await idbPut("outbox", record);
+      document.getElementById("inTitle").value = "";
+      document.getElementById("inBody").value = "";
+      document.getElementById("inAmount").value = "";
+      document.getElementById("inTags").value = "";
+
+      await reloadLocalData();
+      showMsg("capMsg", navigator.onLine ? "Saved locally — syncing to Google Sheets..." : "Saved offline in IndexedDB (will auto-sync when online).", false);
+
+      if (navigator.onLine && getConfig().url) syncAll(false);
+    }
+
+    async function syncAll(showFeedback) {
+      const cfg = getConfig();
+      if (!cfg.url || !cfg.key) {
+        if (showFeedback) showMsg("capMsg", "Set your Apps Script URL & APP_SECRET in the Settings tab first.", true);
+        return;
+      }
+      if (!navigator.onLine) {
+        if (showFeedback) showMsg("capMsg", "Currently offline — items remain safely queued in IndexedDB.", true);
+        return;
+      }
+
+      document.getElementById("syncStamp").textContent = "Syncing...";
+      try {
+        const queued = await idbAll("outbox");
+        if (queued.length > 0) {
+          const pushRes = await callApi({ action: "sync_batch", items: queued });
+          for (const cid of (pushRes.synced_ids || [])) {
+            await idbDelete("outbox", cid);
+          }
+        }
+
+        const pullRes = await callApi({ action: "pull" });
+        await idbReplaceStore("synced", pullRes.items || []);
+        localStorage.setItem(SC_KEY, JSON.stringify(pullRes.shortcuts || []));
+
+        await reloadLocalData();
+        renderShortcuts();
+        document.getElementById("syncStamp").textContent = "Synced " + new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        if (showFeedback) showMsg("capMsg", "Synced cleanly with Google Sheets ✓", false);
+      } catch (err) {
+        document.getElementById("syncStamp").textContent = "Sync paused";
+        if (showFeedback) showMsg("capMsg", err.message, true);
+      }
+    }
+
+    async function reloadLocalData() {
+      cachedOutboxItems = (await idbAll("outbox")).map(x => Object.assign({}, x, { pending: true }));
+      cachedSyncedItems = await idbAll("synced");
+
+      const banner = document.getElementById("outboxBanner");
+      if (cachedOutboxItems.length > 0) {
+        banner.classList.remove("hidden");
+        document.getElementById("outboxText").textContent = `${cachedOutboxItems.length} item(s) queued offline`;
+      } else {
+        banner.classList.add("hidden");
+      }
+      renderFeed();
+    }
+
+    function renderFeed() {
+      const q = document.getElementById("filterBox").value.trim().toLowerCase();
+      const seen = new Set();
+      const merged = [];
+      cachedOutboxItems.concat(cachedSyncedItems).forEach(it => {
+        if (!seen.has(it.client_id)) { seen.add(it.client_id); merged.push(it); }
+      });
+
+      const list = merged.filter(it =>
+        !q || [it.title, it.body, it.tags, it.kind].join(" ").toLowerCase().includes(q)
+      );
+
+      const el = document.getElementById("feedList");
+      if (!list.length) { el.innerHTML = '<p class="muted">No matching captures.</p>'; return; }
+
+      el.innerHTML = list.map(it => {
+        const amt = it.amount !== "" && it.amount !== undefined ? ` • ₹${esc(it.amount)}` : "";
+        return `<div class="item">
+          <div class="item-top">
+            <div>
+              <span class="badge ${it.pending ? "badge-pend" : ""}">${it.pending ? "QUEUED" : esc(it.kind)}</span>
+              <strong style="font-size:14px;margin-left:6px;">${esc(it.title)}${amt}</strong>
+            </div>
+            <button class="ghost" type="button" onclick="deleteCapture('${esc(it.client_id)}', ${Boolean(it.pending)})">Del</button>
+          </div>
+          ${it.body ? `<p style="margin:6px 0 4px;font-size:13px;white-space:pre-wrap;">${esc(it.body)}</p>` : ""}
+          <div class="muted">${esc(it.created_at)}${it.tags ? " • " + esc(it.tags) : ""}</div>
+        </div>`;
+      }).join("");
+    }
+
+    async function deleteCapture(cid, isPending) {
+      await idbDelete("outbox", cid);
+      await idbDelete("synced", cid);
+      await reloadLocalData();
+      if (!isPending && navigator.onLine && getConfig().url) {
+        callApi({ action: "delete_item", client_id: cid }).catch(() => {});
+      }
+    }
+
+    /* --- Shortcuts Launcher --- */
+    function renderShortcuts() {
+      let list = [];
+      try { list = JSON.parse(localStorage.getItem(SC_KEY) || "[]"); } catch (e) {}
+      const grid = document.getElementById("appsGrid");
+      if (!list.length) {
+        grid.innerHTML = '<p class="muted" style="grid-column:1/-1;margin:0;">No pinned tools yet. Add your B5 Vault or C3 TOTP link below.</p>';
+        return;
+      }
+      grid.innerHTML = list.map(sc => `
+        <a class="app-tile" href="${esc(sc.url)}" target="_blank" rel="noopener">
+          <button class="app-del" type="button" title="Remove" onclick="event.preventDefault();deleteShortcut('${esc(sc.app_id)}')">×</button>
+          <span class="badge" style="width:fit-content;">${esc(sc.badge || "TOOL")}</span>
+          <strong style="font-size:14px;margin-top:10px;">${esc(sc.name)}</strong>
+        </a>
+      `).join("");
+    }
+
+    async function handleAddShortcut() {
+      const name = document.getElementById("scName").value.trim();
+      const url = document.getElementById("scUrl").value.trim();
+      const badge = document.getElementById("scBadge").value.trim() || "TOOL";
+      if (!name || !/^https?:\/\//i.test(url)) return showMsg("scMsg", "Enter a name and valid https:// URL.", true);
+
+      try {
+        const res = await callApi({ action: "save_shortcut", shortcut: { name, url, badge } });
+        const list = JSON.parse(localStorage.getItem(SC_KEY) || "[]");
+        list.push(res.shortcut);
+        localStorage.setItem(SC_KEY, JSON.stringify(list));
+        document.getElementById("scName").value = "";
+        document.getElementById("scUrl").value = "";
+        document.getElementById("scBadge").value = "";
+        renderShortcuts();
+        showMsg("scMsg", `Pinned "${name}" & synced to Google Sheets.`, false);
+      } catch (err) {
+        showMsg("scMsg", err.message, true);
+      }
+    }
+
+    async function deleteShortcut(appId) {
+      const list = JSON.parse(localStorage.getItem(SC_KEY) || "[]").filter(s => s.app_id !== appId);
+      localStorage.setItem(SC_KEY, JSON.stringify(list));
+      renderShortcuts();
+      if (navigator.onLine && getConfig().url) callApi({ action: "delete_shortcut", app_id: appId }).catch(() => {});
+    }
+
+    /* --- Settings --- */
+    async function saveConfigAndTest() {
+      const url = document.getElementById("cfgUrl").value.trim();
+      const key = document.getElementById("cfgKey").value.trim();
+      if (!url || !key) return showMsg("cfgMsg", "Enter both the /exec URL and APP_SECRET.", true);
+      localStorage.setItem(CFG_KEY, JSON.stringify({ url, key }));
+      try {
+        const res = await callApi({ action: "ping" });
+        showMsg("cfgMsg", `Connected cleanly! Server IST: ${res.server_time_ist}`, false);
+        syncAll(false);
+      } catch (err) {
+        showMsg("cfgMsg", err.message, true);
+      }
+    }
+
+    function showMsg(id, text, isErr) {
+      const el = document.getElementById(id);
+      el.textContent = text;
+      el.className = "alert " + (isErr ? "alert-err" : "alert-ok");
+    }
+
+    function esc(s) {
+      return String(s || "").replace(/&/g, "&").replace(/</g, "<").replace(/>/g, ">").replace(/"/g, """).replace(/'/g, "'");
+    }
+  </script>
+</body>
+</html>
