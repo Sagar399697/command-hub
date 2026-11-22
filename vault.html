@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>Ephemeral Pass Vault</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" type="image/png" href="./icon-192.png">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+  <style>
+    :root {
+      --bg: #f8fafc; --surface: #ffffff; --border: #e2e8f0;
+      --ink: #0f172a; --muted: #64748b; --accent: #1d4ed8;
+      --accent-hover: #1e40af; --danger: #b91c1c; --danger-bg: #fef2f2;
+      --ok: #15803d; --ok-bg: #f0fdf4; --warn-bg: #fffbeb; --warn: #b45309;
+      --wa: #16a34a;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      margin: 0; background: var(--bg); color: var(--ink);
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      padding-bottom: 32px;
+    }
+    header {
+      position: sticky; top: 0; z-index: 20; background: #0f172a; color: #fff;
+      padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    }
+    .hdr-left { display: flex; align-items: center; gap: 10px; }
+    .back-btn {
+      text-decoration: none; color: #fff; background: rgba(255,255,255,0.14);
+      padding: 6px 10px; border-radius: 7px; font-size: 12.5px; font-weight: 600;
+    }
+    header h1 { margin: 0; font-size: 15.5px; font-weight: 600; letter-spacing: -0.01em; }
+    .tag { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 3px 8px; border-radius: 999px; background: rgba(255,255,255,0.16); color: #fff; white-space: nowrap; }
+    .tag-danger { background: var(--danger-bg); color: var(--danger); }
+    .tag-ok { background: var(--ok-bg); color: var(--ok); }
+    .tag-warn { background: var(--warn-bg); color: var(--warn); }
+    .tag-blue { background: #eff6ff; color: var(--accent); }
+    main { max-width: 580px; margin: 0 auto; padding: 14px 12px; }
+    .card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      padding: 18px 16px; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+    }
+    .top-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px; background: var(--bg); padding: 4px; border-radius: 8px; border: 1px solid var(--border); }
+    .tabs-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-bottom: 14px; background: var(--bg); padding: 4px; border-radius: 8px; border: 1px solid var(--border); }
+    .tab { padding: 10px 6px; border: none; border-radius: 6px; background: transparent; color: var(--muted); font-size: 12.5px; font-weight: 600; cursor: pointer; text-align: center; }
+    .tab.active { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+    label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin: 11px 0 4px; }
+    input, select, textarea {
+      width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+      font-size: 16px; font-family: inherit; color: var(--ink); background: #fff;
+    }
+    textarea { min-height: 88px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    .check { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 13px; color: var(--ink); cursor: pointer; }
+    .check input { width: 18px; height: 18px; margin: 0; }
+    button.primary {
+      width: 100%; margin-top: 14px; min-height: 46px; padding: 11px; border: none; border-radius: 8px;
+      background: var(--accent); color: #fff; font-size: 14.5px; font-weight: 600; cursor: pointer;
+    }
+    button.danger {
+      width: 100%; margin-top: 12px; min-height: 46px; padding: 11px; border: none; border-radius: 8px;
+      background: var(--danger); color: #fff; font-size: 14.5px; font-weight: 600; cursor: pointer;
+    }
+    button.wa-btn {
+      padding: 8px 12px; min-height: 38px; border: none; border-radius: 7px;
+      background: var(--wa); color: #fff; font-size: 12.5px; font-weight: 600; cursor: pointer;
+    }
+    button.ghost {
+      padding: 8px 12px; min-height: 38px; border: 1px solid var(--border); border-radius: 7px;
+      background: #fff; color: var(--ink); font-size: 12.5px; font-weight: 500; cursor: pointer;
+    }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .box { margin-top: 14px; padding: 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; word-break: break-all; white-space: pre-wrap; margin: 0; }
+    .pickup-code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 32px; font-weight: 700;
+      letter-spacing: 0.14em; text-align: center; padding: 14px; background: #fff;
+      border: 2px dashed var(--accent); border-radius: 8px; color: var(--accent); margin: 10px 0;
+    }
+    .kiosk-input {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 28px; font-weight: 700;
+      letter-spacing: 0.16em; text-align: center; padding: 14px;
+    }
+    .alert { margin-top: 12px; padding: 10px 12px; border-radius: 8px; font-size: 13px; line-height: 1.45; }
+    .alert-err { background: var(--danger-bg); color: var(--danger); border: 1px solid #fecaca; }
+    .alert-ok { background: var(--ok-bg); color: var(--ok); border: 1px solid #bbf7d0; }
+    .alert-warn { background: var(--warn-bg); color: var(--warn); border: 1px solid #fde68a; }
+    .qr-wrap { display: flex; justify-content: center; padding: 14px; background: #fff; border: 1px solid var(--border); border-radius: 8px; margin-top: 10px; }
+    .presets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .preset-chip {
+      display: inline-flex; align-items: center; gap: 6px; padding: 7px 11px;
+      border-radius: 7px; border: 1px solid var(--border); background: #fff; font-size: 13px; cursor: pointer;
+    }
+    .preset-del { color: var(--muted); font-weight: 700; padding-left: 6px; }
+    .list-item { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+    .list-item:last-child { border-bottom: none; }
+    .muted { color: var(--muted); font-size: 12px; }
+    .img-preview { max-width: 100%; border-radius: 6px; border: 1px solid var(--border); margin-top: 10px; display: block; }
+    .btn-row { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+    .hidden { display: none !important; }
+    @media (max-width: 520px) {
+      .tabs-4 { grid-template-columns: 1fr 1fr; }
+      .row, .row-3 { grid-template-columns: 1fr; }
+    }
+    @media print {
+      header, .no-print { display: none !important; }
+      body { background: #fff; padding: 0; }
+      .card { border: none; box-shadow: none; padding: 0; }
+    }
+  </style>
+</head>
+<body>
+  <header class="no-print">
+    <div class="hdr-left">
+      <a id="btnBackHub" class="back-btn hidden" href="./index.html">&#8592; Hub</a>
+      <h1 id="pageTitle">Ephemeral Vault</h1>
+    </div>
+    <span id="statusTag" class="tag">E2EE</span>
+  </header>
+
+  <main>
+    <div class="card">
+      <div id="rootSwitcher" class="top-switch hidden no-print">
+        <button id="swAdmin" class="tab active" type="button" onclick="switchRoot('admin')">Vault Admin</button>
+        <button id="swKiosk" class="tab" type="button" onclick="switchRoot('kiosk')">6-Digit Pickup</button>
+      </div>
+
+      <!-- VIEW 1: VAULT ADMIN CREATOR -->
+      <div id="creatorView" class="hidden no-print">
+        <div class="tabs-4">
+          <button id="tabSecret" class="tab active" type="button" onclick="setMode('secret')">Secret / .env</button>
+          <button id="tabFile"   class="tab"        type="button" onclick="setMode('file')">File / KYC</button>
+          <button id="tabWifi"   class="tab"        type="button" onclick="setMode('wifi')">Guest Wi-Fi</button>
+          <button id="tabDrop"   class="tab"        type="button" onclick="setMode('drop')">Request Drop</button>
+        </div>
+
+        <div id="presetBar" class="box hidden" style="margin-top:0;margin-bottom:12px;padding:10px 12px;">
+          <strong style="font-size:12px;">1-Tap Presets (Saved on This Device)</strong>
+          <div id="presetList" class="presets"></div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label for="adminPin">Admin PIN</label>
+            <input id="adminPin" type="password" placeholder="Your ADMIN_PIN" onchange="syncSavedPin()">
+            <label class="check" style="margin-top:6px;font-size:12px;color:var(--muted);">
+              <input id="rememberPinCheck" type="checkbox" onchange="syncSavedPin()">
+              Remember PIN on this phone
+            </label>
+          </div>
+          <div>
+            <label for="passLabel">Label (shown before unlock)</label>
+            <input id="passLabel" type="text" placeholder="e.g., Print Shop PDF or Home Wi-Fi">
+          </div>
+        </div>
+
+        <div id="secretFields">
+          <label for="secretText">Secret / .env / OTP / Recovery Note</label>
+          <textarea id="secretText" placeholder="Paste credentials, API keys, or temporary note..."></textarea>
+        </div>
+
+        <div id="fileFields" class="hidden">
+          <label for="fileInput">Select PDF, Image, or File (Max 4 MB)</label>
+          <input id="fileInput" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.env,.zip,.docx,.xlsx">
+          <label for="fileNote">Optional Accompanying Note</label>
+          <textarea id="fileNote" style="min-height:60px;" placeholder="Optional text decrypted alongside your file..."></textarea>
+          <div class="box" style="margin-top:10px;padding:10px 12px;">
+            <label class="check" style="margin-top:0;">
+              <input id="wmEnabled" type="checkbox" onchange="toggleWatermarkInput()">
+              <strong>Burn Dynamic Watermark into PDF / Image</strong>
+            </label>
+            <div id="wmTextWrap" class="hidden">
+              <label for="wmText">Watermark Stamp</label>
+              <input id="wmText" type="text" placeholder="For Verification Only">
+            </div>
+          </div>
+        </div>
+
+        <div id="wifiFields" class="hidden">
+          <div class="row">
+            <div>
+              <label for="wifiSsid">Wi-Fi Name (SSID)</label>
+              <input id="wifiSsid" type="text" placeholder="e.g., Home_5G">
+            </div>
+            <div>
+              <label for="wifiAuth">Security</label>
+              <select id="wifiAuth">
+                <option value="WPA">WPA / WPA2 / WPA3</option>
+                <option value="WEP">WEP</option>
+                <option value="nopass">Open</option>
+              </select>
+            </div>
+          </div>
+          <label for="wifiPass">Wi-Fi Password</label>
+          <input id="wifiPass" type="text" placeholder="Network password">
+        </div>
+
+        <div id="dropFields" class="hidden">
+          <div class="alert alert-ok" style="margin-top:10px;">
+            <strong>Two-Way Secret Drop-Box:</strong> Generates a blank encrypted link so anyone can send you credentials, a file, or both together. Only you can unlock it with your Admin PIN.
+          </div>
+        </div>
+
+        <div id="standardOptions">
+          <div class="row-3">
+            <div>
+              <label for="accessMode">Delivery Mode</label>
+              <select id="accessMode" onchange="toggleDeliveryFields()">
+                <option value="link">Magic Link (#E2EE)</option>
+                <option value="kiosk">6-Digit Pickup Code</option>
+              </select>
+            </div>
+            <div>
+              <label for="maxViews">Max Views</label>
+              <select id="maxViews">
+                <option value="1" selected>1 View (Burn)</option>
+                <option value="2">2 Views (Print)</option>
+                <option value="3">3 Views (Team)</option>
+                <option value="5">5 Views (Demo)</option>
+              </select>
+            </div>
+            <div>
+              <label for="ttlSelect">Auto-Expire</label>
+              <select id="ttlSelect">
+                <option value="600">10 Min</option>
+                <option value="1800">30 Min</option>
+                <option value="3600" selected>1 Hour</option>
+                <option value="21600">6 Hours</option>
+                <option value="86400">24 Hours</option>
+                <option value="259200">72 Hours</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="secondPinWrap">
+            <label for="extraPin">Optional 2nd-Channel Unlock PIN (auto-burns on 3 misses)</label>
+            <input id="extraPin" type="text" placeholder="Leave blank for standard 1-click link">
+          </div>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-top:10px;">
+            <label class="check" style="margin-top:0;">
+              <input id="notifyCheck" type="checkbox" checked>
+              Telegram/Gmail alert + Burn button
+            </label>
+            <button id="btnSavePreset" class="ghost" type="button" onclick="saveCurrentAsPreset()">+ Save Preset</button>
+          </div>
+        </div>
+
+        <div id="dropTtlWrap" class="hidden">
+          <label for="dropTtl">Drop-Box Link Validity</label>
+          <select id="dropTtl">
+            <option value="3600">1 Hour</option>
+            <option value="21600">6 Hours</option>
+            <option value="86400" selected>24 Hours</option>
+            <option value="259200">72 Hours</option>
+          </select>
+        </div>
+
+        <button id="btnCreate" class="primary" type="button" onclick="handleCreate()">Encrypt &amp; Generate Pass</button>
+        <div id="creatorMsg" class="hidden"></div>
+
+        <div id="resultBox" class="box hidden">
+          <div id="resultLinkPane" class="hidden">
+            <strong id="resultLinkHeading" style="font-size:13px;">One-Time Share Link</strong>
+            <p id="generatedLinkText" class="mono" style="margin-top:8px;"></p>
+            <div class="btn-row">
+              <button class="ghost" type="button" onclick="copyText('generatedLinkText', this)">Copy Link</button>
+              <button class="ghost" type="button" onclick="nativeShare('link')">Share</button>
+              <button class="wa-btn" type="button" onclick="shareViaWhatsApp('link')">WhatsApp</button>
+            </div>
+          </div>
+
+          <div id="resultKioskPane" class="hidden">
+            <strong style="font-size:13px;">6-Digit Pickup Code</strong>
+            <div id="generatedKioskCode" class="pickup-code"></div>
+            <p class="muted" style="margin:0 0 8px;">Kiosk URL: <code id="generatedKioskUrl"></code></p>
+            <div class="btn-row">
+              <button class="ghost" type="button" onclick="copyText('generatedKioskCode', this)">Copy Code</button>
+              <button class="ghost" type="button" onclick="nativeShare('kiosk')">Share</button>
+              <button class="wa-btn" type="button" onclick="shareViaWhatsApp('kiosk')">WhatsApp</button>
+            </div>
+          </div>
+
+          <p id="generatedMeta" class="muted" style="margin:10px 0 0;"></p>
+        </div>
+
+        <div style="margin-top:18px;border-top:1px solid var(--border);padding-top:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <strong style="font-size:13px;">Active Passes &amp; Drop-Boxes</strong>
+            <button class="ghost" type="button" onclick="loadActivePasses()">Refresh List</button>
+          </div>
+          <div id="activeList" style="margin-top:8px;">
+            <p class="muted">Tap Refresh List to monitor views or burn active passes immediately.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- VIEW 2: 6-DIGIT PICKUP KIOSK -->
+      <div id="kioskView" class="hidden">
+        <div id="kioskPrompt" class="no-print">
+          <p style="margin-top:0;font-size:14px;">Enter your <strong>6-digit pickup code</strong>:</p>
+          <input id="kioskCodeInput" class="kiosk-input" type="text" inputmode="numeric" maxlength="7" placeholder="849-201">
+          <button id="btnKioskUnlock" class="primary" type="button" onclick="handleKioskUnlock()">Unlock &amp; Decrypt Pass</button>
+          <div id="kioskError" class="alert alert-err hidden"></div>
+        </div>
+      </div>
+
+      <!-- VIEW 3: MAGIC LINK RECIPIENT VIEW -->
+      <div id="recipientView" class="hidden">
+        <div id="recipientLoading" class="muted no-print">Checking pass availability...</div>
+        <div id="recipientReady" class="hidden no-print">
+          <p style="margin-top:0;font-size:14px;">Encrypted Pass: <strong id="recLabel"></strong></p>
+          <p id="recMeta" class="muted"></p>
+          <div id="recPinWrap" class="hidden">
+            <label for="recPinInput">2nd-Channel Unlock PIN Required</label>
+            <input id="recPinInput" type="password" placeholder="Enter PIN provided by sender">
+          </div>
+          <div class="alert alert-warn" id="recWarning"></div>
+          <button id="btnReveal" class="danger" type="button" onclick="handleReveal()">Reveal &amp; Decrypt Pass</button>
+        </div>
+        <div id="recipientError" class="alert alert-err hidden no-print"></div>
+      </div>
+
+      <!-- VIEW 4: TWO-WAY DROP-BOX VIEW -->
+      <div id="dropView" class="hidden">
+        <div id="dropLoading" class="muted no-print">Checking Drop-Box status...</div>
+
+        <div id="dropSenderForm" class="hidden no-print">
+          <p style="margin-top:0;font-size:14px;">Secure Drop-Box Request: <strong id="dropLabel"></strong></p>
+          <p class="muted" style="margin-top:0;">Submit text, a file, or <strong>both together</strong>. Encrypted locally (AES-256-GCM) before upload.</p>
+          <label for="dropSecretText">Secret / Credentials / Notes</label>
+          <textarea id="dropSecretText" placeholder="Paste password, SMTP string, API key, or instructions..."></textarea>
+          <label for="dropFileInput">Attach File (Optional, Max 4 MB)</label>
+          <input id="dropFileInput" type="file">
+          <button id="btnDropSubmit" class="primary" type="button" onclick="handleDropSubmit()">Encrypt &amp; Seal in Drop-Box</button>
+        </div>
+
+        <div id="dropAdminUnlock" class="hidden no-print">
+          <div class="alert alert-ok" style="margin-top:0;">
+            <strong>Encrypted Secret Sealed!</strong> Enter your Admin PIN to decrypt &amp; burn: <strong id="dropFilledLabel"></strong>.
+          </div>
+          <label for="dropAdminPin">Vault Owner Admin PIN</label>
+          <input id="dropAdminPin" type="password" placeholder="Your ADMIN_PIN">
+          <button id="btnDropUnlock" class="danger" type="button" onclick="handleDropAdminUnlock()">Decrypt &amp; Permanently Burn</button>
+        </div>
+
+        <div id="dropDoneMsg" class="alert alert-ok hidden no-print"></div>
+        <div id="dropError" class="alert alert-err hidden no-print"></div>
+      </div>
+
+      <!-- SHARED DECRYPTED OUTPUT -->
+      <div id="unlockedOutput" class="hidden">
+        <div id="unlockedBanner" class="alert alert-ok no-print" style="margin-top:0;"></div>
+
+        <div id="outSecretBox" class="box hidden">
+          <div class="no-print" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <strong style="font-size:13px;">Decrypted Text / Credentials</strong>
+            <button class="ghost" type="button" onclick="copyText('outSecretText', this)">Copy</button>
+          </div>
+          <pre id="outSecretText" class="mono"></pre>
+        </div>
+
+        <div id="outWifiBox" class="box hidden">
+          <div class="no-print" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <strong style="font-size:14px;" id="outWifiSsid"></strong>
+            <button class="ghost" type="button" onclick="copyText('outWifiPass', this)">Copy Password</button>
+          </div>
+          <p class="muted" style="margin:0 0 4px;">Password:</p>
+          <p id="outWifiPass" class="mono" style="font-size:15px;font-weight:600;"></p>
+          <div id="outQrWrap" class="qr-wrap"></div>
+          <p class="muted no-print" style="text-align:center;margin:8px 0 0;">Scan with phone camera to join Wi-Fi</p>
+        </div>
+
+        <div id="outFileBox" class="box hidden">
+          <div class="no-print">
+            <strong id="outFileName" style="font-size:14px;"></strong>
+            <div id="outFileMeta" class="muted" style="margin-top:2px;"></div>
+            <div class="btn-row">
+              <a id="btnDownloadFile" style="text-decoration:none;"><button class="primary" style="margin-top:0;width:auto;padding:9px 16px;" type="button">Download File</button></a>
+              <button id="btnPrintFile" class="ghost" type="button" onclick="handlePrintFile()">Print / Preview</button>
+            </div>
+          </div>
+          <img id="outImgPreview" class="img-preview hidden" alt="Decrypted Document">
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    /* Plain /macros/s/.../exec URL (NEVER use /a/* for fetch API calls) */
+    const B5_API_URL = "https://script.google.com/macros/s/AKfycbwcXB5L_XbQ_F58tPEyErf3vLaa-_TIA4rH7oxniJVox2aMIjCXt5qjuzbkAGXm2XaN/exec";
+    const SHARE_BASE = window.location.origin + window.location.pathname;
+    const MAX_FILE_BYTES = 4 * 1024 * 1024;
+    const PRESET_STORAGE_KEY = "b5_vault_presets_v2";
+    const PIN_STORAGE_KEY = "b5_device_admin_pin";
+
+    let currentMode = "secret";
+    let activePassId = "";
+    let activeDropId = "";
+    let urlFragmentKey = "";
+    let recipientMeta = null;
+    let decryptedFileBlobUrl = null;
+    let decryptedFileMime = "";
+
+    async function b5Api(action, payload) {
+      const res = await fetch(B5_API_URL, {
+        method: "POST",
+        credentials: "omit",
+        redirect: "follow",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ action: action, payload: payload || {} })
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error || "Vault API request failed.");
+      return json.data;
+    }
+
+    function bufToB64Url(buf) {
+      const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+      let bin = "";
+      const chunk = 0x8000;
+      for (let i = 0; i < bytes.length; i += chunk) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+      return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    }
+
+    function b64UrlToBytes(b64url) {
+      let b64 = b64url.replace(/-/g, "+").replace(/_/g, "/");
+      while (b64.length % 4) b64 += "=";
+      const bin = atob(b64);
+      const out = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+      return out;
+    }
+
+    async function sha256Hex(str) {
+      const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
+      return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, "0")).join("");
+    }
+
+    async function derivePbkdf2Key(secretStr, saltBytes, iterations) {
+      const baseKey = await crypto.subtle.importKey("raw", new TextEncoder().encode(secretStr), "PBKDF2", false, ["deriveKey"]);
+      return crypto.subtle.deriveKey(
+        { name: "PBKDF2", salt: saltBytes, iterations: iterations || 250000, hash: "SHA-256" },
+        baseKey, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]
+      );
+    }
+
+    function generateSixDigitCode() {
+      const arr = new Uint32Array(1);
+      crypto.getRandomValues(arr);
+      return String(arr[0] % 1000000).padStart(6, "0");
+    }
+
+    function packFileEnvelope(metaObj, fileBytes) {
+      const headerBytes = new TextEncoder().encode(JSON.stringify(metaObj));
+      const out = new Uint8Array(6 + headerBytes.length + fileBytes.length);
+      out[0] = 0x42; out[1] = 0x35;
+      new DataView(out.buffer).setUint32(2, headerBytes.length, false);
+      out.set(headerBytes, 6);
+      out.set(fileBytes, 6 + headerBytes.length);
+      return out;
+    }
+
+    function unpackDecryptedBytes(plainBytes) {
+      if (plainBytes.length > 6 && plainBytes[0] === 0x42 && plainBytes[1] === 0x35) {
+        const headerLen = new DataView(plainBytes.buffer, plainBytes.byteOffset, plainBytes.byteLength).getUint32(2, false);
+        const header = JSON.parse(new TextDecoder().decode(plainBytes.subarray(6, 6 + headerLen)));
+        return { isBinaryFile: true, meta: header, bytes: plainBytes.subarray(6 + headerLen) };
+      }
+      return { isBinaryFile: false, data: JSON.parse(new TextDecoder().decode(plainBytes)) };
+    }
+
+    async function watermarkImageBytes(file, stampText) {
+      const bmp = await createImageBitmap(file);
+      const scale = Math.min(1, 2200 / Math.max(bmp.width, bmp.height));
+      const w = Math.round(bmp.width * scale), h = Math.round(bmp.height * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(bmp, 0, 0, w, h);
+      bmp.close();
+
+      ctx.save();
+      const fontSize = Math.max(16, Math.round(Math.min(w, h) * 0.032));
+      ctx.font = "700 " + fontSize + "px Inter, sans-serif";
+      ctx.textAlign = "center";
+      ctx.rotate(-Math.PI / 6);
+      const stepX = Math.max(260, ctx.measureText(stampText).width + 90);
+      const stepY = Math.max(130, fontSize * 4.5);
+      for (let y = -w; y < h + w; y += stepY) {
+        for (let x = -h; x < w + h; x += stepX) {
+          ctx.fillStyle = "rgba(255, 255, 255, 0.36)"; ctx.fillText(stampText, x + 1, y + 1);
+          ctx.fillStyle = "rgba(185, 28, 28, 0.34)"; ctx.fillText(stampText, x, y);
+        }
+      }
+      ctx.restore();
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", 0.88));
+      return { bytes: new Uint8Array(await blob.arrayBuffer()), mime: "image/jpeg", name: file.name.replace(/\.[^.]+$/, "") + "_watermarked.jpg" };
+    }
+
+    async function watermarkPdfBytes(file, stampText) {
+      if (typeof PDFLib === "undefined") throw new Error("PDF watermark library failed to load.");
+      let pdfDoc;
+      try { pdfDoc = await PDFLib.PDFDocument.load(await file.arrayBuffer()); }
+      catch (e) { throw new Error("Cannot watermark a password-protected PDF. Unlock it or uncheck watermark."); }
+      const font = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
+      pdfDoc.getPages().forEach(page => {
+        const size = page.getSize();
+        const fontSize = Math.max(14, Math.min(24, Math.round(size.width * 0.03)));
+        const stepX = Math.max(220, size.width * 0.45), stepY = Math.max(150, size.height * 0.22);
+        for (let y = 40; y < size.height; y += stepY) {
+          for (let x = 20; x < size.width; x += stepX) {
+            page.drawText(stampText, { x: x, y: y, size: fontSize, font: font, color: PDFLib.rgb(0.75, 0.12, 0.12), opacity: 0.28, rotate: PDFLib.degrees(32) });
+          }
+        }
+      });
+      return { bytes: await pdfDoc.save(), mime: "application/pdf", name: file.name.replace(/\.pdf$/i, "") + "_watermarked.pdf" };
+    }
+
+    function syncSavedPin() {
+      const pin = document.getElementById("adminPin").value.trim();
+      const remember = document.getElementById("rememberPinCheck").checked;
+      if (pin) sessionStorage.setItem("b5_session_pin", pin);
+      if (remember && pin) localStorage.setItem(PIN_STORAGE_KEY, pin);
+      else localStorage.removeItem(PIN_STORAGE_KEY);
+    }
+
+    window.addEventListener("load", function() {
+      const todayStamp = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+      document.getElementById("wmText").value = "For Verification Only • " + todayStamp;
+
+      const devicePin = localStorage.getItem(PIN_STORAGE_KEY);
+      const sessPin = sessionStorage.getItem("b5_session_pin");
+      if (devicePin) {
+        document.getElementById("adminPin").value = devicePin;
+        document.getElementById("dropAdminPin").value = devicePin;
+        document.getElementById("rememberPinCheck").checked = true;
+      } else if (sessPin) {
+        document.getElementById("adminPin").value = sessPin;
+        document.getElementById("dropAdminPin").value = sessPin;
+      }
+
+      renderPresets();
+
+      const sp = new URLSearchParams(window.location.search);
+      activePassId = (sp.get("id") || "").trim();
+      activeDropId = (sp.get("drop") || "").trim();
+      const kioskParam = sp.get("kiosk") === "1" || sp.get("mode") === "kiosk";
+      urlFragmentKey = (window.location.hash || "").replace(/^#/, "").trim();
+
+      if (activePassId) {
+        initRecipientView();
+      } else if (activeDropId) {
+        initDropBoxView();
+      } else if (kioskParam) {
+        document.getElementById("pageTitle").textContent = "6-Digit Pickup";
+        document.getElementById("kioskView").classList.remove("hidden");
+      } else {
+        document.getElementById("btnBackHub").classList.remove("hidden");
+        document.getElementById("rootSwitcher").classList.remove("hidden");
+        document.getElementById("creatorView").classList.remove("hidden");
+      }
+    });
+
+    function switchRoot(view) {
+      document.getElementById("swAdmin").classList.toggle("active", view === "admin");
+      document.getElementById("swKiosk").classList.toggle("active", view === "kiosk");
+      document.getElementById("creatorView").classList.toggle("hidden", view !== "admin");
+      document.getElementById("kioskView").classList.toggle("hidden", view !== "kiosk");
+      document.getElementById("unlockedOutput").classList.add("hidden");
+    }
+
+    function setMode(mode) {
+      currentMode = mode;
+      ["Secret", "File", "Wifi", "Drop"].forEach(m => document.getElementById("tab" + m).classList.toggle("active", m.toLowerCase() === mode));
+      document.getElementById("secretFields").classList.toggle("hidden", mode !== "secret");
+      document.getElementById("fileFields").classList.toggle("hidden", mode !== "file");
+      document.getElementById("wifiFields").classList.toggle("hidden", mode !== "wifi");
+      document.getElementById("dropFields").classList.toggle("hidden", mode !== "drop");
+      document.getElementById("standardOptions").classList.toggle("hidden", mode === "drop");
+      document.getElementById("dropTtlWrap").classList.toggle("hidden", mode !== "drop");
+      document.getElementById("btnSavePreset").classList.toggle("hidden", mode === "file" || mode === "drop");
+      document.getElementById("btnCreate").textContent = mode === "drop" ? "Generate Two-Way Drop-Box Link" : "Encrypt & Generate Pass";
+    }
+
+    function toggleDeliveryFields() {
+      const mode = document.getElementById("accessMode").value;
+      document.getElementById("secondPinWrap").classList.toggle("hidden", mode === "kiosk");
+      if (mode === "kiosk" && document.getElementById("ttlSelect").value === "86400") document.getElementById("ttlSelect").value = "1800";
+    }
+
+    function toggleWatermarkInput() {
+      document.getElementById("wmTextWrap").classList.toggle("hidden", !document.getElementById("wmEnabled").checked);
+    }
+
+    function showCreatorAlert(text, isError) {
+      const el = document.getElementById("creatorMsg");
+      el.textContent = text;
+      el.className = "alert " + (isError ? "alert-err" : "alert-ok");
+    }
+
+    function getPresets() {
+      try { return JSON.parse(localStorage.getItem(PRESET_STORAGE_KEY) || "[]"); } catch (e) { return []; }
+    }
+
+    function renderPresets() {
+      const presets = getPresets();
+      const bar = document.getElementById("presetBar"), list = document.getElementById("presetList");
+      if (!presets.length) { bar.classList.add("hidden"); return; }
+      bar.classList.remove("hidden");
+      list.innerHTML = "";
+      presets.forEach((p, idx) => {
+        const chip = document.createElement("div"); chip.className = "preset-chip";
+        const span = document.createElement("span"); span.textContent = (p.mode === "wifi" ? "Wi-Fi: " : "Note: ") + p.label;
+        span.onclick = () => applyPreset(p);
+        const del = document.createElement("span"); del.className = "preset-del"; del.textContent = "x";
+        del.onclick = e => { e.stopPropagation(); const n = getPresets(); n.splice(idx, 1); localStorage.setItem(PRESET_STORAGE_KEY, JSON.stringify(n)); renderPresets(); };
+        chip.appendChild(span); chip.appendChild(del); list.appendChild(chip);
+      });
+    }
+
+    function saveCurrentAsPreset() {
+      const label = document.getElementById("passLabel").value.trim();
+      if (!label) return showCreatorAlert("Enter a Label before saving a preset.", true);
+      let preset;
+      if (currentMode === "wifi") {
+        const ssid = document.getElementById("wifiSsid").value.trim();
+        if (!ssid) return showCreatorAlert("Enter Wi-Fi SSID first.", true);
+        preset = { mode: "wifi", label: label, ssid: ssid, wifiPass: document.getElementById("wifiPass").value, wifiAuth: document.getElementById("wifiAuth").value, ttl: document.getElementById("ttlSelect").value };
+      } else if (currentMode === "secret") {
+        const text = document.getElementById("secretText").value;
+        if (!text.trim()) return showCreatorAlert("Enter secret content first.", true);
+        preset = { mode: "secret", label: label, text: text, ttl: document.getElementById("ttlSelect").value };
+      } else return;
+      const presets = getPresets().filter(x => x.label !== label);
+      presets.unshift(preset);
+      localStorage.setItem(PRESET_STORAGE_KEY, JSON.stringify(presets.slice(0, 8)));
+      renderPresets();
+      showCreatorAlert("Saved 1-Tap Preset on this phone.", false);
+    }
+
+    function applyPreset(p) {
+      setMode(p.mode);
+      document.getElementById("passLabel").value = p.label;
+      document.getElementById("ttlSelect").value = p.ttl || "1800";
+      if (p.mode === "wifi") {
+        document.getElementById("wifiSsid").value = p.ssid || "";
+        document.getElementById("wifiPass").value = p.wifiPass || "";
+        document.getElementById("wifiAuth").value = p.wifiAuth || "WPA";
+      } else document.getElementById("secretText").value = p.text || "";
+      showCreatorAlert("Loaded preset. Tap Encrypt & Generate Pass!", false);
+    }
+
+    function buildShareMessage(type) {
+      if (type === "kiosk") {
+        return "Temporary Pickup Code: " + document.getElementById("generatedKioskCode").textContent + "\nOpen here: " + document.getElementById("generatedKioskUrl").textContent;
+      }
+      return document.getElementById("resultLinkHeading").textContent + ":\n" + document.getElementById("generatedLinkText").textContent;
+    }
+
+    function shareViaWhatsApp(type) {
+      window.open("https://wa.me/?text=" + encodeURIComponent(buildShareMessage(type)), "_blank");
+    }
+
+    async function nativeShare(type) {
+      const msg = buildShareMessage(type);
+      if (navigator.share) {
+        try { await navigator.share({ title: "Ephemeral Pass", text: msg }); return; } catch (e) {}
+      }
+      navigator.clipboard.writeText(msg);
+      showCreatorAlert("Copied share text to clipboard.", false);
+    }
+
+    async function handleCreate() {
+      const btn = document.getElementById("btnCreate");
+      const pin = document.getElementById("adminPin").value.trim();
+      if (!pin) return showCreatorAlert("Please enter your Admin PIN.", true);
+      syncSavedPin();
+
+      document.getElementById("creatorMsg").classList.add("hidden");
+      document.getElementById("resultBox").classList.add("hidden");
+
+      if (currentMode === "drop") {
+        const label = document.getElementById("passLabel").value.trim() || "Incoming Secret Request";
+        const ttlSeconds = parseInt(document.getElementById("dropTtl").value, 10);
+        btn.disabled = true; btn.textContent = "Generating Drop-Box...";
+        try {
+          const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
+          const keyB64Url = bufToB64Url(await crypto.subtle.exportKey("raw", key));
+          const res = await b5Api("createDropBox", { pin: pin, label: label, ttlSeconds: ttlSeconds });
+
+          const dropUrl = SHARE_BASE + "?drop=" + encodeURIComponent(res.passId) + "#" + keyB64Url;
+          document.getElementById("resultBox").classList.remove("hidden");
+          document.getElementById("resultLinkPane").classList.remove("hidden");
+          document.getElementById("resultKioskPane").classList.add("hidden");
+          document.getElementById("resultLinkHeading").textContent = "Two-Way Drop-Box Link";
+          document.getElementById("generatedLinkText").textContent = dropUrl;
+          document.getElementById("generatedMeta").textContent = "Valid until " + res.expiresAtIst + " IST. Open this exact link + Admin PIN once they submit.";
+          showCreatorAlert("Drop-Box ready! A 1-tap Burn button was sent to Telegram/Gmail.", false);
+          loadActivePasses();
+        } catch (err) {
+          showCreatorAlert(err.message, true);
+        } finally {
+          btn.disabled = false; btn.textContent = "Generate Two-Way Drop-Box Link";
+        }
+        return;
+      }
+
+      const label = document.getElementById("passLabel").value.trim() ||
+        (currentMode === "wifi" ? "Guest Wi-Fi Pass" : currentMode === "file" ? "Encrypted Document" : "One-Time Secret");
+      const accessMode = document.getElementById("accessMode").value;
+      const maxViews = parseInt(document.getElementById("maxViews").value, 10);
+      const ttlSeconds = parseInt(document.getElementById("ttlSelect").value, 10);
+      const notifyOnRead = document.getElementById("notifyCheck").checked;
+      const extraPin = accessMode === "link" ? document.getElementById("extraPin").value.trim() : "";
+
+      btn.disabled = true; btn.textContent = "Encrypting locally...";
+
+      try {
+        let plainBytes;
+        if (currentMode === "wifi") {
+          const ssid = document.getElementById("wifiSsid").value.trim();
+          if (!ssid) throw new Error("Enter Wi-Fi Network Name (SSID).");
+          plainBytes = new TextEncoder().encode(JSON.stringify({ mode: "wifi", ssid: ssid, wifiPass: document.getElementById("wifiPass").value, wifiAuth: document.getElementById("wifiAuth").value }));
+        } else if (currentMode === "secret") {
+          const text = document.getElementById("secretText").value;
+          if (!text.trim()) throw new Error("Enter secret content to encrypt.");
+          plainBytes = new TextEncoder().encode(JSON.stringify({ mode: "secret", text: text }));
+        } else if (currentMode === "file") {
+          const fileInput = document.getElementById("fileInput");
+          if (!fileInput.files || !fileInput.files.length) throw new Error("Select a file to encrypt.");
+          const file = fileInput.files[0];
+          const wmOn = document.getElementById("wmEnabled").checked;
+          const wmStamp = document.getElementById("wmText").value.trim() || "For Verification Only";
+          const fileNote = document.getElementById("fileNote").value.trim();
+          let outBytes, outMime = file.type || "application/octet-stream", outName = file.name, watermarked = false;
+
+          if (wmOn && /^image\/(jpeg|png|webp)$/i.test(file.type)) {
+            btn.textContent = "Watermarking image...";
+            const wm = await watermarkImageBytes(file, wmStamp);
+            outBytes = wm.bytes; outMime = wm.mime; outName = wm.name; watermarked = true;
+          } else if (wmOn && (file.type === "application/pdf" || /\.pdf$/i.test(file.name))) {
+            btn.textContent = "Watermarking PDF...";
+            const wm = await watermarkPdfBytes(file, wmStamp);
+            outBytes = wm.bytes; outMime = wm.mime; outName = wm.name; watermarked = true;
+          } else {
+            outBytes = new Uint8Array(await file.arrayBuffer());
+          }
+          if (outBytes.length > MAX_FILE_BYTES) throw new Error("File exceeds 4 MB safety limit.");
+          plainBytes = packFileEnvelope({ mode: "file", name: outName, mime: outMime, size: outBytes.length, watermarked: watermarked, note: fileNote }, outBytes);
+        }
+
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        let cryptoKey, fragmentKeyB64 = "", pickupCode = "", kioskHash = "", kioskSaltB64 = "", pinHash = "", pinSaltB64 = "";
+
+        if (accessMode === "kiosk") {
+          pickupCode = generateSixDigitCode();
+          const salt = crypto.getRandomValues(new Uint8Array(16));
+          kioskSaltB64 = bufToB64Url(salt);
+          kioskHash = await sha256Hex("b5_kiosk:" + pickupCode);
+          cryptoKey = await derivePbkdf2Key(pickupCode, salt, 250000);
+        } else {
+          const rawKeyBytes = crypto.getRandomValues(new Uint8Array(32));
+          fragmentKeyB64 = bufToB64Url(rawKeyBytes);
+          if (extraPin) {
+            const pSalt = crypto.getRandomValues(new Uint8Array(16));
+            pinSaltB64 = bufToB64Url(pSalt);
+            pinHash = await sha256Hex("b5_pin:" + pinSaltB64 + ":" + extraPin);
+            cryptoKey = await derivePbkdf2Key(fragmentKeyB64 + ":" + extraPin, pSalt, 150000);
+          } else {
+            cryptoKey = await crypto.subtle.importKey("raw", rawKeyBytes, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
+          }
+        }
+
+        const cipherB64 = bufToB64Url(await crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, cryptoKey, plainBytes));
+        btn.textContent = "Uploading ciphertext...";
+
+        const res = await b5Api("createEphemeralPass", {
+          pin: pin, label: label, kind: currentMode, accessMode: accessMode,
+          ciphertext: cipherB64, iv: bufToB64Url(iv),
+          maxViews: maxViews, ttlSeconds: ttlSeconds, notifyOnRead: notifyOnRead,
+          kioskHash: kioskHash, kioskSalt: kioskSaltB64, pinHash: pinHash, pinSalt: pinSaltB64
+        });
+
+        document.getElementById("resultBox").classList.remove("hidden");
+        if (accessMode === "kiosk") {
+          document.getElementById("resultLinkPane").classList.add("hidden");
+          document.getElementById("resultKioskPane").classList.remove("hidden");
+          document.getElementById("generatedKioskCode").textContent = pickupCode.slice(0, 3) + "-" + pickupCode.slice(3);
+          document.getElementById("generatedKioskUrl").textContent = SHARE_BASE + "?kiosk=1";
+        } else {
+          document.getElementById("resultKioskPane").classList.add("hidden");
+          document.getElementById("resultLinkPane").classList.remove("hidden");
+          document.getElementById("resultLinkHeading").textContent = extraPin ? "Two-Channel Pass Link" : "One-Time Pass Link";
+          document.getElementById("generatedLinkText").textContent = SHARE_BASE + "?id=" + encodeURIComponent(res.passId) + "#" + fragmentKeyB64;
+        }
+
+        document.getElementById("generatedMeta").textContent = "Views: " + res.maxViews + " • Expires: " + res.expiresAtIst + " IST" + (extraPin ? " • 2nd PIN Armed" : "");
+        document.getElementById("secretText").value = "";
+        document.getElementById("fileNote").value = "";
+        document.getElementById("wifiPass").value = "";
+        document.getElementById("extraPin").value = "";
+        document.getElementById("fileInput").value = "";
+        showCreatorAlert("Encrypted & armed! Use Telegram/Gmail Burn button anytime to kill it.", false);
+        loadActivePasses();
+      } catch (err) {
+        showCreatorAlert(err.message, true);
+      } finally {
+        btn.disabled = false; btn.textContent = "Encrypt & Generate Pass";
+      }
+    }
+
+    async function initRecipientView() {
+      document.getElementById("recipientView").classList.remove("hidden");
+      document.getElementById("pageTitle").textContent = "Encrypted Pass";
+      if (!urlFragmentKey || urlFragmentKey.length < 40) {
+        document.getElementById("recipientLoading").classList.add("hidden");
+        showElError("recipientError", "Incomplete link: missing #key fragment. Pass was NOT burned.");
+        return;
+      }
+      try {
+        const res = await b5Api("checkPassStatus", { passId: activePassId });
+        document.getElementById("recipientLoading").classList.add("hidden");
+        if (!res.exists) { setTag("Destroyed", "tag-danger"); showElError("recipientError", res.reason); return; }
+        recipientMeta = res;
+        document.getElementById("recLabel").textContent = res.label;
+        document.getElementById("recMeta").textContent = "Views left: " + res.remainingViews + "/" + res.maxViews + " • Expires in ~" + res.remainingMinutes + "m (" + res.expiresAtIst + " IST).";
+        if (res.requiresPin) document.getElementById("recPinWrap").classList.remove("hidden");
+        document.getElementById("recWarning").textContent = res.remainingViews === 1
+          ? "Final view: tapping below decrypts once and permanently destroys the server copy."
+          : "Tapping below uses 1 of " + res.remainingViews + " remaining view(s).";
+        document.getElementById("recipientReady").classList.remove("hidden");
+      } catch (err) {
+        document.getElementById("recipientLoading").classList.add("hidden");
+        showElError("recipientError", err.message);
+      }
+    }
+
+    async function handleReveal() {
+      const btn = document.getElementById("btnReveal");
+      document.getElementById("recipientError").classList.add("hidden");
+      let suppliedPin = "", pinHash = "";
+      if (recipientMeta && recipientMeta.requiresPin) {
+        suppliedPin = document.getElementById("recPinInput").value.trim();
+        if (!suppliedPin) return showElError("recipientError", "Enter the Unlock PIN provided by the sender.");
+        pinHash = await sha256Hex("b5_pin:" + recipientMeta.pinSalt + ":" + suppliedPin);
+      }
+      btn.disabled = true; btn.textContent = "Decrypting...";
+      try {
+        const res = await b5Api("consumeEphemeralPass", { passId: activePassId, pinHash: pinHash });
+        const cryptoKey = (recipientMeta && recipientMeta.requiresPin)
+          ? await derivePbkdf2Key(urlFragmentKey + ":" + suppliedPin, b64UrlToBytes(recipientMeta.pinSalt), 150000)
+          : await crypto.subtle.importKey("raw", b64UrlToBytes(urlFragmentKey), { name: "AES-GCM" }, false, ["decrypt"]);
+        const plainBuf = await crypto.subtle.decrypt({ name: "AES-GCM", iv: b64UrlToBytes(res.iv) }, cryptoKey, b64UrlToBytes(res.ciphertext));
+        document.getElementById("recipientReady").classList.add("hidden");
+        const banner = res.burned ? "Decrypted locally & permanently burned (" + res.burnedAtIst + " IST)." : "Decrypted (" + res.remainingViews + "/" + res.maxViews + " views left).";
+        setTag(res.burned ? "Burned" : res.remainingViews + " Left", res.burned ? "tag-ok" : "tag-warn");
+        renderDecryptedPayload(new Uint8Array(plainBuf), banner);
+      } catch (err) {
+        btn.disabled = false; btn.textContent = "Reveal & Decrypt Pass";
+        if (!String(err.message).startsWith("WRONG_PIN")) {
+          document.getElementById("recipientReady").classList.add("hidden");
+          setTag("Destroyed", "tag-danger");
+        }
+        showElError("recipientError", String(err.message).replace(/^WRONG_PIN:\s*/, ""));
+      }
+    }
+
+    async function handleKioskUnlock() {
+      const raw = document.getElementById("kioskCodeInput").value.replace(/[^0-9]/g, "");
+      document.getElementById("kioskError").classList.add("hidden");
+      if (raw.length !== 6) return showElError("kioskError", "Enter all 6 digits (e.g., 849-201).");
+      const btn = document.getElementById("btnKioskUnlock");
+      btn.disabled = true; btn.textContent = "Unlocking...";
+      try {
+        const kHash = await sha256Hex("b5_kiosk:" + raw);
+        const res = await b5Api("consumeKioskPass", { kioskHash: kHash });
+        const key = await derivePbkdf2Key(raw, b64UrlToBytes(res.kioskSalt), 250000);
+        const plainBuf = await crypto.subtle.decrypt({ name: "AES-GCM", iv: b64UrlToBytes(res.iv) }, key, b64UrlToBytes(res.ciphertext));
+        document.getElementById("kioskPrompt").classList.add("hidden");
+        const banner = res.burned ? "Unlocked & permanently burned (" + res.burnedAtIst + " IST)." : "Unlocked (" + res.remainingViews + "/" + res.maxViews + " views left).";
+        setTag(res.burned ? "Burned" : "Unlocked", "tag-ok");
+        renderDecryptedPayload(new Uint8Array(plainBuf), banner);
+      } catch (err) {
+        btn.disabled = false; btn.textContent = "Unlock & Decrypt Pass";
+        showElError("kioskError", err.message);
+      }
+    }
+
+    async function initDropBoxView() {
+      document.getElementById("dropView").classList.remove("hidden");
+      document.getElementById("pageTitle").textContent = "Encrypted Drop-Box";
+      if (!urlFragmentKey || urlFragmentKey.length < 40) {
+        document.getElementById("dropLoading").classList.add("hidden");
+        showElError("dropError", "Incomplete Drop-Box link (missing #key fragment).");
+        return;
+      }
+      try {
+        const res = await b5Api("checkPassStatus", { passId: activeDropId });
+        document.getElementById("dropLoading").classList.add("hidden");
+        if (!res.exists) { setTag("Closed", "tag-danger"); showElError("dropError", res.reason); return; }
+        if (res.status === "DROP_OPEN") {
+          setTag("Open", "tag-ok");
+          document.getElementById("dropLabel").textContent = res.label;
+          document.getElementById("dropSenderForm").classList.remove("hidden");
+        } else if (res.status === "DROP_FILLED") {
+          setTag("Sealed", "tag-warn");
+          document.getElementById("dropFilledLabel").textContent = res.label;
+          document.getElementById("dropAdminUnlock").classList.remove("hidden");
+        } else showElError("dropError", "Invalid Drop-Box state.");
+      } catch (err) {
+        document.getElementById("dropLoading").classList.add("hidden");
+        showElError("dropError", err.message);
+      }
+    }
+
+    async function handleDropSubmit() {
+      const btn = document.getElementById("btnDropSubmit");
+      document.getElementById("dropError").classList.add("hidden");
+      const cleanText = document.getElementById("dropSecretText").value.trim();
+      const fileInput = document.getElementById("dropFileInput");
+      const hasFile = fileInput.files && fileInput.files.length > 0;
+      if (!hasFile && !cleanText) return showElError("dropError", "Enter text or attach a file to submit.");
+
+      btn.disabled = true; btn.textContent = "Encrypting locally...";
+      try {
+        let plainBytes, senderKind = "secret";
+        if (hasFile) {
+          const f = fileInput.files[0];
+          if (f.size > MAX_FILE_BYTES) throw new Error("File exceeds 4 MB limit.");
+          const fBytes = new Uint8Array(await f.arrayBuffer());
+          plainBytes = packFileEnvelope({ mode: "file", name: f.name, mime: f.type || "application/octet-stream", size: f.size, watermarked: false, note: cleanText }, fBytes);
+          senderKind = cleanText ? "text + file" : "file";
+        } else {
+          plainBytes = new TextEncoder().encode(JSON.stringify({ mode: "secret", text: cleanText }));
+        }
+        const key = await crypto.subtle.importKey("raw", b64UrlToBytes(urlFragmentKey), { name: "AES-GCM" }, false, ["encrypt"]);
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const cipherBuf = await crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, key, plainBytes);
+        btn.textContent = "Sealing Drop-Box...";
+        const res = await b5Api("submitDropBoxPayload", {
+          passId: activeDropId, ciphertext: bufToB64Url(cipherBuf), iv: bufToB64Url(iv), senderKind: senderKind
+        });
+        document.getElementById("dropSenderForm").classList.add("hidden");
+        setTag("Sealed", "tag-ok");
+        const done = document.getElementById("dropDoneMsg");
+        done.textContent = "Encrypted & sealed (" + senderKind + ") at " + res.submittedAtIst + " IST. Vault owner notified.";
+        done.classList.remove("hidden");
+      } catch (err) {
+        btn.disabled = false; btn.textContent = "Encrypt & Seal in Drop-Box";
+        showElError("dropError", err.message);
+      }
+    }
+
+    async function handleDropAdminUnlock() {
+      const pin = document.getElementById("dropAdminPin").value.trim();
+      document.getElementById("dropError").classList.add("hidden");
+      if (!pin) return showElError("dropError", "Enter your Admin PIN.");
+      const btn = document.getElementById("btnDropUnlock");
+      btn.disabled = true; btn.textContent = "Decrypting & burning...";
+      try {
+        const res = await b5Api("consumeDropBoxPass", { passId: activeDropId, adminPin: pin });
+        const key = await crypto.subtle.importKey("raw", b64UrlToBytes(urlFragmentKey), { name: "AES-GCM" }, false, ["decrypt"]);
+        const plainBuf = await crypto.subtle.decrypt({ name: "AES-GCM", iv: b64UrlToBytes(res.iv) }, key, b64UrlToBytes(res.ciphertext));
+        document.getElementById("dropAdminUnlock").classList.add("hidden");
+        setTag("Burned", "tag-ok");
+        renderDecryptedPayload(new Uint8Array(plainBuf), "Drop-Box decrypted & permanently destroyed (" + res.burnedAtIst + " IST).");
+      } catch (err) {
+        btn.disabled = false; btn.textContent = "Decrypt & Permanently Burn";
+        showElError("dropError", err.message);
+      }
+    }
+
+    function renderDecryptedPayload(plainBytes, bannerText) {
+      document.getElementById("unlockedOutput").classList.remove("hidden");
+      document.getElementById("unlockedBanner").textContent = bannerText;
+      document.getElementById("outSecretBox").classList.add("hidden");
+      document.getElementById("outWifiBox").classList.add("hidden");
+      document.getElementById("outFileBox").classList.add("hidden");
+
+      const parsed = unpackDecryptedBytes(plainBytes);
+      if (parsed.isBinaryFile) {
+        const meta = parsed.meta;
+        if (meta.note && meta.note.trim()) {
+          document.getElementById("outSecretBox").classList.remove("hidden");
+          document.getElementById("outSecretText").textContent = meta.note;
+        }
+        const blob = new Blob([parsed.bytes], { type: meta.mime || "application/octet-stream" });
+        if (decryptedFileBlobUrl) URL.revokeObjectURL(decryptedFileBlobUrl);
+        decryptedFileBlobUrl = URL.createObjectURL(blob);
+        decryptedFileMime = meta.mime || "";
+
+        document.getElementById("outFileBox").classList.remove("hidden");
+        document.getElementById("outFileName").textContent = meta.name || "decrypted_file";
+        document.getElementById("outFileMeta").textContent = (parsed.bytes.length / 1024).toFixed(1) + " KB • " + (meta.mime || "file") + (meta.watermarked ? " • Watermarked" : "");
+        const dl = document.getElementById("btnDownloadFile");
+        dl.href = decryptedFileBlobUrl;
+        dl.download = meta.name || "decrypted_file";
+
+        const imgEl = document.getElementById("outImgPreview");
+        if (decryptedFileMime.startsWith("image/")) {
+          imgEl.src = decryptedFileBlobUrl;
+          imgEl.classList.remove("hidden");
+          document.getElementById("btnPrintFile").textContent = "Print Image";
+        } else {
+          imgEl.classList.add("hidden");
+          document.getElementById("btnPrintFile").textContent = decryptedFileMime === "application/pdf" ? "Open PDF" : "Open File";
+        }
+        return;
+      }
+
+      const data = parsed.data;
+      if (data.mode === "wifi") {
+        document.getElementById("outWifiBox").classList.remove("hidden");
+        document.getElementById("outWifiSsid").textContent = "Wi-Fi: " + data.ssid;
+        document.getElementById("outWifiPass").textContent = data.wifiPass || "(Open Network)";
+        const escWifi = s => String(s || "").replace(/([\\;,:"])/g, "\\$1");
+        const qrStr = "WIFI:T:" + (data.wifiAuth || "WPA") + ";S:" + escWifi(data.ssid) + ";P:" + escWifi(data.wifiPass) + ";;";
+        const wrap = document.getElementById("outQrWrap");
+        wrap.innerHTML = "";
+        if (typeof QRCode !== "undefined") new QRCode(wrap, { text: qrStr, width: 190, height: 190, correctLevel: QRCode.CorrectLevel.M });
+      } else {
+        document.getElementById("outSecretBox").classList.remove("hidden");
+        document.getElementById("outSecretText").textContent = data.text || "";
+      }
+    }
+
+    function handlePrintFile() {
+      if (!decryptedFileBlobUrl) return;
+      if (decryptedFileMime.startsWith("image/")) window.print();
+      else window.open(decryptedFileBlobUrl, "_blank");
+    }
+
+    async function loadActivePasses() {
+      const pin = document.getElementById("adminPin").value.trim();
+      const container = document.getElementById("activeList");
+      if (!pin) return showCreatorAlert("Enter your Admin PIN first.", true);
+      container.innerHTML = '<p class="muted">Loading...</p>';
+      try {
+        const items = await b5Api("listActivePasses", { pin: pin });
+        if (!items.length) { container.innerHTML = '<p class="muted">No active passes or Drop-Boxes.</p>'; return; }
+        container.innerHTML = "";
+        items.forEach(item => {
+          const row = document.createElement("div"); row.className = "list-item";
+          const info = document.createElement("div");
+          const title = document.createElement("strong"); title.textContent = item.label;
+          const badge = document.createElement("span");
+          badge.className = "tag " + (item.status === "DROP_FILLED" ? "tag-ok" : item.accessMode === "kiosk" ? "tag-warn" : "tag-blue");
+          badge.style.marginLeft = "6px";
+          badge.textContent = item.status === "DROP_OPEN" ? "DROP OPEN" : item.status === "DROP_FILLED" ? "DROP FILLED" : item.accessMode === "kiosk" ? "6-DIGIT" : item.kind.toUpperCase();
+          const meta = document.createElement("div"); meta.className = "muted";
+          meta.textContent = "Views: " + item.remainingViews + "/" + item.maxViews + " • ~" + item.remainingMinutes + "m left" + (item.requiresPin ? " • PIN" : "");
+          info.appendChild(title); info.appendChild(badge); info.appendChild(meta);
+
+          const burnBtn = document.createElement("button"); burnBtn.className = "ghost"; burnBtn.type = "button"; burnBtn.textContent = "Burn";
+          burnBtn.onclick = async () => {
+            burnBtn.disabled = true; burnBtn.textContent = "...";
+            try { await b5Api("revokePass", { pin: pin, passId: item.id }); loadActivePasses(); }
+            catch (err) { showCreatorAlert(err.message, true); }
+          };
+          row.appendChild(info); row.appendChild(burnBtn); container.appendChild(row);
+        });
+      } catch (err) {
+        container.innerHTML = "";
+        showCreatorAlert(err.message, true);
+      }
+    }
+
+    function setTag(text, cls) { const el = document.getElementById("statusTag"); el.textContent = text; el.className = "tag " + (cls || ""); }
+    function showElError(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.classList.remove("hidden"); }
+    function copyText(elementId, btn) {
+      navigator.clipboard.writeText(document.getElementById(elementId).textContent);
+      const orig = btn.textContent; btn.textContent = "Copied"; setTimeout(() => btn.textContent = orig, 1500);
+    }
+  </script>
+</body>
+</html>
