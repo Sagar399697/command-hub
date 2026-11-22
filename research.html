@@ -11,7 +11,7 @@
   <style>
     :root {
       --bg: #f8fafc; --surface: #ffffff; --border: #e2e8f0;
-      --ink: #0f172a; --muted: #64748b; --accent: #1d4ed8;
+      --ink: #0f172a; --body: #334155; --muted: #64748b; --accent: #1d4ed8;
       --ok: #15803d; --ok-bg: #f0fdf4; --warn: #b45309; --warn-bg: #fffbeb;
       --danger: #b91c1c; --danger-bg: #fef2f2;
     }
@@ -35,7 +35,7 @@
       font-size: 11px; font-weight: 600; padding: 5px 10px; border-radius: 999px;
       background: rgba(255,255,255,0.14); color: #fff; border: none; cursor: pointer;
     }
-    main { max-width: 600px; margin: 0 auto; padding: 14px 12px; }
+    main { max-width: 640px; margin: 0 auto; padding: 14px 12px; }
     .card {
       background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
       padding: 16px; margin-bottom: 12px;
@@ -46,7 +46,7 @@
       font-size: 15px; font-family: inherit; color: var(--ink); background: #fff;
     }
     textarea { min-height: 76px; resize: vertical; }
-    .btn-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+    .btn-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
     button.primary {
       flex: 1; min-width: 130px; min-height: 44px; padding: 10px 14px; border: none; border-radius: 8px;
       background: var(--accent); color: #fff; font-size: 13.5px; font-weight: 600; cursor: pointer;
@@ -55,12 +55,13 @@
       flex: 1; min-width: 130px; min-height: 44px; padding: 10px 14px; border: 1px solid var(--accent); border-radius: 8px;
       background: #eff6ff; color: var(--accent); font-size: 13.5px; font-weight: 600; cursor: pointer;
     }
-    button.ghost {
-      padding: 7px 11px; min-height: 34px; border: 1px solid var(--border); border-radius: 7px;
-      background: #fff; color: var(--ink); font-size: 12px; font-weight: 600; cursor: pointer; text-decoration: none;
-      display: inline-flex; align-items: center;
+    .ghost {
+      padding: 7px 12px; min-height: 36px; border: 1px solid var(--border); border-radius: 7px;
+      background: #fff; color: var(--ink); font-size: 12.5px; font-weight: 600; cursor: pointer;
+      text-decoration: none; display: inline-flex; align-items: center; justify-content: center;
     }
-    button.ghost-danger { color: var(--danger); border-color: #fecaca; }
+    .ghost-accent { border-color: #bfdbfe; background: #eff6ff; color: var(--accent); }
+    .ghost-danger { color: var(--danger); border-color: #fecaca; }
     button:disabled { opacity: 0.55; cursor: not-allowed; }
     .alert { padding: 10px 12px; border-radius: 8px; font-size: 13px; margin-top: 10px; }
     .alert-ok { background: var(--ok-bg); color: var(--ok); border: 1px solid #bbf7d0; }
@@ -73,11 +74,28 @@
     .badge-pend { background: var(--warn-bg); color: var(--warn); }
     .badge-err { background: var(--danger-bg); color: var(--danger); }
     .muted { font-size: 12px; color: var(--muted); }
-    .reader-body {
-      margin-top: 12px; padding: 14px; background: var(--bg); border: 1px solid var(--border);
-      border-radius: 8px; font-size: 14px; line-height: 1.6; white-space: pre-wrap; word-break: break-word;
-      max-height: 68vh; overflow-y: auto;
+
+    /* Rich In-App Brief Reader */
+    .reader-shell {
+      margin-top: 14px; padding: 16px 14px; background: #ffffff; border: 1px solid var(--border);
+      border-radius: 10px; max-height: 75vh; overflow-y: auto;
     }
+    .reader-shell h2 {
+      font-size: 15.5px; font-weight: 700; color: var(--ink); margin: 18px 0 6px;
+      padding-bottom: 4px; border-bottom: 1px solid #f1f5f9;
+    }
+    .reader-shell h2:first-child { margin-top: 0; }
+    .reader-shell h3 { font-size: 14px; font-weight: 700; color: var(--ink); margin: 12px 0 4px; }
+    .reader-shell p { font-size: 14px; line-height: 1.62; color: var(--body); margin: 0 0 10px; }
+    .reader-shell ul { margin: 0 0 12px; padding-left: 18px; }
+    .reader-shell li { font-size: 14px; line-height: 1.58; color: var(--body); margin-bottom: 6px; }
+    .reader-shell a { color: var(--accent); text-decoration: none; font-weight: 500; word-break: break-word; }
+    .reader-shell a:hover { text-decoration: underline; }
+    .tbl-wrap { overflow-x: auto; margin: 10px 0 14px; border: 1px solid var(--border); border-radius: 8px; }
+    .reader-shell table { width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 420px; }
+    .reader-shell th { background: #0f172a; color: #fff; text-align: left; padding: 8px 10px; font-weight: 600; }
+    .reader-shell td { padding: 8px 10px; border-top: 1px solid var(--border); color: var(--body); vertical-align: top; line-height: 1.45; }
+    .reader-shell tr:nth-child(even) td { background: #f8fafc; }
     .hidden { display: none !important; }
   </style>
 </head>
@@ -91,12 +109,11 @@
   </header>
 
   <main>
-    <!-- API CONNECTION SETUP (Stored locally on phone only) -->
     <div id="setupCard" class="card hidden">
       <strong style="font-size:14px;">Connect Shadow Researcher API</strong>
-      <p class="muted" style="margin:4px 0 8px;">Use the plain <code>/macros/s/.../exec</code> URL from <strong>Shadow-Researcher-Agent</strong> (never <code>/a/*</code>).</p>
+      <p class="muted" style="margin:4px 0 8px;">Use the plain <code>/macros/s/.../exec</code> URL from <strong>Shadow-Researcher-Agent</strong>.</p>
       <label for="cfgUrl">Web App API URL (/exec)</label>
-      <input id="cfgUrl" type="url" placeholder="https://script.google.com/macros/s/.../exec">
+      <input id="cfgUrl" type="url" placeholder="[https://script.google.com/macros/s/.../exec](https://script.google.com/macros/s/.../exec)">
       <label for="cfgSecret">RESEARCH_SECRET</label>
       <input id="cfgSecret" type="password" placeholder="Your RESEARCH_SECRET from Script Properties">
       <div class="btn-row">
@@ -105,26 +122,26 @@
       <div id="cfgMsg" class="hidden"></div>
     </div>
 
-    <!-- IN-APP BRIEF READER -->
+    <!-- IN-APP FORMATTED BRIEF READER -->
     <div id="readerCard" class="card hidden">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
-        <strong id="readerTitle" style="font-size:15px;"></strong>
+        <strong id="readerTitle" style="font-size:15.5px;line-height:1.35;"></strong>
         <button class="ghost" type="button" onclick="closeReader()">Close</button>
       </div>
-      <div class="btn-row" style="margin-top:8px;">
-        <button class="ghost" type="button" onclick="copyBriefText(this)">Copy Brief</button>
-        <a id="readerDocLink" class="ghost" href="#" target="_blank" rel="noopener">Open in Google Docs</a>
+      <div class="btn-row" style="margin-top:10px;">
+        <button class="ghost" type="button" onclick="copyBriefText(this)">Copy Text</button>
+        <a id="readerDocLink" class="ghost ghost-accent" href="#" target="_blank" rel="noopener">Open in Google Docs</a>
       </div>
-      <div id="readerBody" class="reader-body">Loading brief...</div>
+      <div id="readerBody" class="reader-shell">Loading brief...</div>
     </div>
 
     <!-- 1-TAP TOPIC QUEUE -->
     <div class="card">
       <strong style="font-size:14px;">Queue Nightly Research Topic</strong>
       <label for="inTopic">Idea, Question, or Topic</label>
-      <input id="inTopic" type="text" placeholder="e.g., Compare Supabase RLS vs Neon branching for SaaS">
-      <label for="inContext">Specific Angle or URLs to Scrape (Optional)</label>
-      <textarea id="inContext" placeholder="Paste any GitHub repo, blog link, or comparison criteria..."></textarea>
+      <input id="inTopic" type="text" placeholder="e.g., Coolify vs Dokploy for self-hosting Next.js">
+      <label for="inContext">Specific Angle or URLs to Read (Optional)</label>
+      <textarea id="inContext" placeholder="Paste any blog link, GitHub repo, or what you want compared..."></textarea>
       <div class="btn-row">
         <button id="btnQueue" class="primary" type="button" onclick="submitTopic(false)">Queue for 3:00 AM</button>
         <button id="btnQueueRun" class="secondary" type="button" onclick="submitTopic(true)">Queue & Run Now</button>
@@ -132,7 +149,7 @@
       <div id="queueMsg" class="hidden"></div>
     </div>
 
-    <!-- QUEUE & MORNING BRIEFS LIST -->
+    <!-- QUEUE & MORNING BRIEFS -->
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
         <strong style="font-size:14px;">Queue & Morning Briefs</strong>
@@ -142,13 +159,13 @@
         </div>
       </div>
       <div id="listMsg" class="hidden"></div>
-      <div id="queueList"><p class="muted">Connect API in Setup to view your queue and morning briefs.</p></div>
+      <div id="queueList"><p class="muted">Connect API in Setup to view your briefs.</p></div>
     </div>
   </main>
 
   <script>
     const SR_CFG_KEY = "c4_shadow_research_cfg";
-    let currentBriefRawText = "";
+    let currentBriefPlainText = "";
 
     function getCfg() {
       try { return JSON.parse(localStorage.getItem(SR_CFG_KEY) || "{}"); } catch (e) { return {}; }
@@ -173,12 +190,8 @@
       const cfg = getCfg();
       if (cfg.url) document.getElementById("cfgUrl").value = cfg.url;
       if (cfg.secret) document.getElementById("cfgSecret").value = cfg.secret;
-
-      if (!cfg.url || !cfg.secret) {
-        document.getElementById("setupCard").classList.remove("hidden");
-      } else {
-        loadQueue();
-      }
+      if (!cfg.url || !cfg.secret) document.getElementById("setupCard").classList.remove("hidden");
+      else loadQueue();
     });
 
     function toggleSetup() {
@@ -189,16 +202,15 @@
       const url = document.getElementById("cfgUrl").value.trim();
       const secret = document.getElementById("cfgSecret").value.trim();
       if (!url || !secret) return showMsg("cfgMsg", "Enter both the plain /exec URL and RESEARCH_SECRET.", true);
-      if (url.includes("/a/*/")) return showMsg("cfgMsg", "Remove /a/* from the URL — use plain https://script.google.com/macros/s/.../exec.", true);
+      if (url.includes("/a/*/")) return showMsg("cfgMsg", "Remove /a/* from the URL — use plain [https://script.google.com/macros/s/.../exec](https://script.google.com/macros/s/.../exec).", true);
 
       const btn = document.getElementById("btnConnect");
       btn.disabled = true; btn.textContent = "Connecting...";
       localStorage.setItem(SR_CFG_KEY, JSON.stringify({ url: url, secret: secret }));
-
       try {
         const res = await srApi({ action: "ping" });
         showMsg("cfgMsg", "Connected cleanly! Server IST: " + res.server_time_ist, false);
-        setTimeout(() => document.getElementById("setupCard").classList.add("hidden"), 900);
+        setTimeout(() => document.getElementById("setupCard").classList.add("hidden"), 800);
         loadQueue();
       } catch (err) {
         showMsg("cfgMsg", err.message, true);
@@ -215,14 +227,14 @@
       const b1 = document.getElementById("btnQueue");
       const b2 = document.getElementById("btnQueueRun");
       b1.disabled = true; b2.disabled = true;
-      if (runNow) b2.textContent = "Researching (~30s)...";
+      if (runNow) b2.textContent = "Researching (~35s)...";
       else b1.textContent = "Queuing...";
 
       try {
-        const res = await srApi({ action: "add_topic", topic: topic, context: context, run_now: runNow });
+        await srApi({ action: "add_topic", topic: topic, context: context, run_now: runNow });
         document.getElementById("inTopic").value = "";
         document.getElementById("inContext").value = "";
-        showMsg("queueMsg", runNow ? "Brief generated! Tap Read Brief below." : "Queued for 3:00 AM nightly run.", false);
+        showMsg("queueMsg", runNow ? "Brief ready! Tap Read Brief below." : "Queued for 3:00 AM nightly run.", false);
         loadQueue();
       } catch (err) {
         showMsg("queueMsg", err.message, true);
@@ -260,13 +272,10 @@
         }
         container.innerHTML = "";
         items.forEach(it => {
-          const row = document.createElement("div");
-          row.className = "item";
-
-          const top = document.createElement("div");
-          top.className = "item-top";
-
+          const row = document.createElement("div"); row.className = "item";
+          const top = document.createElement("div"); top.className = "item-top";
           const left = document.createElement("div");
+
           const badge = document.createElement("span");
           badge.className = "badge " + (it.status === "DONE" ? "badge-done" : it.status === "ERROR" ? "badge-err" : "badge-pend");
           badge.textContent = it.status;
@@ -301,9 +310,9 @@
             actions.style.marginTop = "8px";
 
             const readBtn = document.createElement("button");
-            readBtn.className = "ghost";
+            readBtn.className = "ghost ghost-accent";
             readBtn.type = "button";
-            readBtn.textContent = "Read Brief";
+            readBtn.textContent = "Read Inside App";
             readBtn.onclick = () => openBriefReader(it.topic, it.docUrl);
 
             const docLink = document.createElement("a");
@@ -317,7 +326,6 @@
             actions.appendChild(docLink);
             row.appendChild(actions);
           }
-
           container.appendChild(row);
         });
       } catch (err) {
@@ -331,17 +339,92 @@
       const body = document.getElementById("readerBody");
       document.getElementById("readerTitle").textContent = topic;
       document.getElementById("readerDocLink").href = docUrl;
-      body.textContent = "Loading formatted brief from Google Docs...";
+      body.innerHTML = '<p class="muted">Loading formatted brief...</p>';
       card.classList.remove("hidden");
       card.scrollIntoView({ behavior: "smooth", block: "start" });
 
       try {
         const res = await srApi({ action: "read_brief", docUrl: docUrl });
-        currentBriefRawText = res.text || "";
-        body.textContent = currentBriefRawText || "(Empty document)";
+        currentBriefPlainText = res.plainText || "";
+        if (res.docUrl) document.getElementById("readerDocLink").href = res.docUrl;
+        renderStructuredBlocks(body, res.blocks || [], res.plainText || "");
       } catch (err) {
-        body.textContent = "Could not load brief: " + err.message;
+        body.innerHTML = "";
+        const errP = document.createElement("p");
+        errP.style.color = "#b91c1c";
+        errP.textContent = "Could not load brief: " + err.message;
+        body.appendChild(errP);
       }
+    }
+
+    function renderStructuredBlocks(container, blocks, fallbackText) {
+      container.innerHTML = "";
+      if (!blocks.length) {
+        const p = document.createElement("p");
+        p.style.whiteSpace = "pre-wrap";
+        p.textContent = fallbackText || "(Empty document)";
+        container.appendChild(p);
+        return;
+      }
+
+      let activeUl = null;
+      blocks.forEach((b, idx) => {
+        if (b.kind === "title" && idx === 0) return; // Already shown in card header
+
+        if (b.kind === "li") {
+          if (!activeUl) {
+            activeUl = document.createElement("ul");
+            container.appendChild(activeUl);
+          }
+          const li = document.createElement("li");
+          if (b.url) {
+            const a = document.createElement("a");
+            a.href = b.url;
+            a.target = "_blank";
+            a.rel = "noopener";
+            a.textContent = b.text;
+            li.appendChild(a);
+          } else {
+            li.textContent = b.text;
+          }
+          activeUl.appendChild(li);
+          return;
+        }
+
+        activeUl = null;
+
+        if (b.kind === "h1" || b.kind === "h2") {
+          const h = document.createElement("h2");
+          h.textContent = b.text;
+          container.appendChild(h);
+        } else if (b.kind === "h3") {
+          const h = document.createElement("h3");
+          h.textContent = b.text;
+          container.appendChild(h);
+        } else if (b.kind === "table" && b.rows && b.rows.length) {
+          const wrap = document.createElement("div");
+          wrap.className = "tbl-wrap";
+          const tbl = document.createElement("table");
+          b.rows.forEach((rowCells, rIdx) => {
+            const tr = document.createElement("tr");
+            rowCells.forEach(cellText => {
+              const cell = document.createElement(rIdx === 0 ? "th" : "td");
+              cell.textContent = cellText;
+              tr.appendChild(cell);
+            });
+            tbl.appendChild(tr);
+          });
+          wrap.appendChild(tbl);
+          container.appendChild(wrap);
+        } else {
+          const p = document.createElement("p");
+          p.textContent = b.text;
+          if (b.text.startsWith("Date:") || b.text.startsWith("Generated:")) {
+            p.className = "muted";
+          }
+          container.appendChild(p);
+        }
+      });
     }
 
     function closeReader() {
@@ -349,8 +432,8 @@
     }
 
     function copyBriefText(btn) {
-      if (!currentBriefRawText) return;
-      navigator.clipboard.writeText(currentBriefRawText);
+      if (!currentBriefPlainText) return;
+      navigator.clipboard.writeText(currentBriefPlainText);
       const orig = btn.textContent;
       btn.textContent = "Copied";
       setTimeout(() => btn.textContent = orig, 1400);
