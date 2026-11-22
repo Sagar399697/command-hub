@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>Shadow Researcher</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" type="image/png" href="./icon-192.png">
+  <style>
+    :root {
+      --bg: #f8fafc; --surface: #ffffff; --border: #e2e8f0;
+      --ink: #0f172a; --muted: #64748b; --accent: #1d4ed8;
+      --ok: #15803d; --ok-bg: #f0fdf4; --warn: #b45309; --warn-bg: #fffbeb;
+      --danger: #b91c1c; --danger-bg: #fef2f2;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      margin: 0; background: var(--bg); color: var(--ink);
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      padding-bottom: 36px;
+    }
+    header {
+      position: sticky; top: 0; z-index: 20; background: #0f172a; color: #fff;
+      padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    }
+    .hdr-left { display: flex; align-items: center; gap: 10px; }
+    .back-btn {
+      text-decoration: none; color: #fff; background: rgba(255,255,255,0.14);
+      padding: 6px 10px; border-radius: 7px; font-size: 12.5px; font-weight: 600;
+    }
+    header h1 { margin: 0; font-size: 15.5px; font-weight: 600; letter-spacing: -0.01em; }
+    .pill {
+      font-size: 11px; font-weight: 600; padding: 5px 10px; border-radius: 999px;
+      background: rgba(255,255,255,0.14); color: #fff; border: none; cursor: pointer;
+    }
+    main { max-width: 600px; margin: 0 auto; padding: 14px 12px; }
+    .card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      padding: 16px; margin-bottom: 12px;
+    }
+    label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin: 10px 0 4px; }
+    input, textarea {
+      width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+      font-size: 15px; font-family: inherit; color: var(--ink); background: #fff;
+    }
+    textarea { min-height: 76px; resize: vertical; }
+    .btn-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+    button.primary {
+      flex: 1; min-width: 130px; min-height: 44px; padding: 10px 14px; border: none; border-radius: 8px;
+      background: var(--accent); color: #fff; font-size: 13.5px; font-weight: 600; cursor: pointer;
+    }
+    button.secondary {
+      flex: 1; min-width: 130px; min-height: 44px; padding: 10px 14px; border: 1px solid var(--accent); border-radius: 8px;
+      background: #eff6ff; color: var(--accent); font-size: 13.5px; font-weight: 600; cursor: pointer;
+    }
+    button.ghost {
+      padding: 7px 11px; min-height: 34px; border: 1px solid var(--border); border-radius: 7px;
+      background: #fff; color: var(--ink); font-size: 12px; font-weight: 600; cursor: pointer; text-decoration: none;
+      display: inline-flex; align-items: center;
+    }
+    button.ghost-danger { color: var(--danger); border-color: #fecaca; }
+    button:disabled { opacity: 0.55; cursor: not-allowed; }
+    .alert { padding: 10px 12px; border-radius: 8px; font-size: 13px; margin-top: 10px; }
+    .alert-ok { background: var(--ok-bg); color: var(--ok); border: 1px solid #bbf7d0; }
+    .alert-err { background: var(--danger-bg); color: var(--danger); border: 1px solid #fecaca; }
+    .item { border-bottom: 1px solid var(--border); padding: 12px 0; }
+    .item:last-child { border-bottom: none; padding-bottom: 0; }
+    .item-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+    .badge { font-size: 10.5px; font-weight: 700; text-transform: uppercase; padding: 2px 7px; border-radius: 999px; background: #eff6ff; color: var(--accent); }
+    .badge-done { background: var(--ok-bg); color: var(--ok); }
+    .badge-pend { background: var(--warn-bg); color: var(--warn); }
+    .badge-err { background: var(--danger-bg); color: var(--danger); }
+    .muted { font-size: 12px; color: var(--muted); }
+    .reader-body {
+      margin-top: 12px; padding: 14px; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; font-size: 14px; line-height: 1.6; white-space: pre-wrap; word-break: break-word;
+      max-height: 68vh; overflow-y: auto;
+    }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="hdr-left">
+      <a class="back-btn" href="./index.html">← Hub</a>
+      <h1>Shadow Researcher</h1>
+    </div>
+    <button class="pill" type="button" onclick="toggleSetup()">Setup</button>
+  </header>
+
+  <main>
+    <!-- API CONNECTION SETUP (Stored locally on phone only) -->
+    <div id="setupCard" class="card hidden">
+      <strong style="font-size:14px;">Connect Shadow Researcher API</strong>
+      <p class="muted" style="margin:4px 0 8px;">Use the plain <code>/macros/s/.../exec</code> URL from <strong>Shadow-Researcher-Agent</strong> (never <code>/a/*</code>).</p>
+      <label for="cfgUrl">Web App API URL (/exec)</label>
+      <input id="cfgUrl" type="url" placeholder="https://script.google.com/macros/s/.../exec">
+      <label for="cfgSecret">RESEARCH_SECRET</label>
+      <input id="cfgSecret" type="password" placeholder="Your RESEARCH_SECRET from Script Properties">
+      <div class="btn-row">
+        <button id="btnConnect" class="primary" type="button" onclick="saveAndConnect()">Save & Connect</button>
+      </div>
+      <div id="cfgMsg" class="hidden"></div>
+    </div>
+
+    <!-- IN-APP BRIEF READER -->
+    <div id="readerCard" class="card hidden">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+        <strong id="readerTitle" style="font-size:15px;"></strong>
+        <button class="ghost" type="button" onclick="closeReader()">Close</button>
+      </div>
+      <div class="btn-row" style="margin-top:8px;">
+        <button class="ghost" type="button" onclick="copyBriefText(this)">Copy Brief</button>
+        <a id="readerDocLink" class="ghost" href="#" target="_blank" rel="noopener">Open in Google Docs</a>
+      </div>
+      <div id="readerBody" class="reader-body">Loading brief...</div>
+    </div>
+
+    <!-- 1-TAP TOPIC QUEUE -->
+    <div class="card">
+      <strong style="font-size:14px;">Queue Nightly Research Topic</strong>
+      <label for="inTopic">Idea, Question, or Topic</label>
+      <input id="inTopic" type="text" placeholder="e.g., Compare Supabase RLS vs Neon branching for SaaS">
+      <label for="inContext">Specific Angle or URLs to Scrape (Optional)</label>
+      <textarea id="inContext" placeholder="Paste any GitHub repo, blog link, or comparison criteria..."></textarea>
+      <div class="btn-row">
+        <button id="btnQueue" class="primary" type="button" onclick="submitTopic(false)">Queue for 3:00 AM</button>
+        <button id="btnQueueRun" class="secondary" type="button" onclick="submitTopic(true)">Queue & Run Now</button>
+      </div>
+      <div id="queueMsg" class="hidden"></div>
+    </div>
+
+    <!-- QUEUE & MORNING BRIEFS LIST -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+        <strong style="font-size:14px;">Queue & Morning Briefs</strong>
+        <div style="display:flex;gap:6px;">
+          <button id="btnRunPending" class="ghost" type="button" onclick="runPendingNow()">Run Pending</button>
+          <button class="ghost" type="button" onclick="loadQueue()">Refresh</button>
+        </div>
+      </div>
+      <div id="listMsg" class="hidden"></div>
+      <div id="queueList"><p class="muted">Connect API in Setup to view your queue and morning briefs.</p></div>
+    </div>
+  </main>
+
+  <script>
+    const SR_CFG_KEY = "c4_shadow_research_cfg";
+    let currentBriefRawText = "";
+
+    function getCfg() {
+      try { return JSON.parse(localStorage.getItem(SR_CFG_KEY) || "{}"); } catch (e) { return {}; }
+    }
+
+    async function srApi(payload) {
+      const cfg = getCfg();
+      if (!cfg.url || !cfg.secret) throw new Error("Tap Setup (top right) to enter your Shadow Researcher URL and RESEARCH_SECRET.");
+      const res = await fetch(cfg.url, {
+        method: "POST",
+        credentials: "omit",
+        redirect: "follow",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(Object.assign({ secret: cfg.secret }, payload))
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error || "API call failed.");
+      return json;
+    }
+
+    window.addEventListener("load", function() {
+      const cfg = getCfg();
+      if (cfg.url) document.getElementById("cfgUrl").value = cfg.url;
+      if (cfg.secret) document.getElementById("cfgSecret").value = cfg.secret;
+
+      if (!cfg.url || !cfg.secret) {
+        document.getElementById("setupCard").classList.remove("hidden");
+      } else {
+        loadQueue();
+      }
+    });
+
+    function toggleSetup() {
+      document.getElementById("setupCard").classList.toggle("hidden");
+    }
+
+    async function saveAndConnect() {
+      const url = document.getElementById("cfgUrl").value.trim();
+      const secret = document.getElementById("cfgSecret").value.trim();
+      if (!url || !secret) return showMsg("cfgMsg", "Enter both the plain /exec URL and RESEARCH_SECRET.", true);
+      if (url.includes("/a/*/")) return showMsg("cfgMsg", "Remove /a/* from the URL — use plain https://script.google.com/macros/s/.../exec.", true);
+
+      const btn = document.getElementById("btnConnect");
+      btn.disabled = true; btn.textContent = "Connecting...";
+      localStorage.setItem(SR_CFG_KEY, JSON.stringify({ url: url, secret: secret }));
+
+      try {
+        const res = await srApi({ action: "ping" });
+        showMsg("cfgMsg", "Connected cleanly! Server IST: " + res.server_time_ist, false);
+        setTimeout(() => document.getElementById("setupCard").classList.add("hidden"), 900);
+        loadQueue();
+      } catch (err) {
+        showMsg("cfgMsg", err.message, true);
+      } finally {
+        btn.disabled = false; btn.textContent = "Save & Connect";
+      }
+    }
+
+    async function submitTopic(runNow) {
+      const topic = document.getElementById("inTopic").value.trim();
+      const context = document.getElementById("inContext").value.trim();
+      if (!topic) return showMsg("queueMsg", "Enter a topic or question first.", true);
+
+      const b1 = document.getElementById("btnQueue");
+      const b2 = document.getElementById("btnQueueRun");
+      b1.disabled = true; b2.disabled = true;
+      if (runNow) b2.textContent = "Researching (~30s)...";
+      else b1.textContent = "Queuing...";
+
+      try {
+        const res = await srApi({ action: "add_topic", topic: topic, context: context, run_now: runNow });
+        document.getElementById("inTopic").value = "";
+        document.getElementById("inContext").value = "";
+        showMsg("queueMsg", runNow ? "Brief generated! Tap Read Brief below." : "Queued for 3:00 AM nightly run.", false);
+        loadQueue();
+      } catch (err) {
+        showMsg("queueMsg", err.message, true);
+      } finally {
+        b1.disabled = false; b2.disabled = false;
+        b1.textContent = "Queue for 3:00 AM";
+        b2.textContent = "Queue & Run Now";
+      }
+    }
+
+    async function runPendingNow() {
+      const btn = document.getElementById("btnRunPending");
+      btn.disabled = true; btn.textContent = "Running...";
+      document.getElementById("listMsg").classList.add("hidden");
+      try {
+        const res = await srApi({ action: "run_now" });
+        showMsg("listMsg", "Processed " + (res.processed || 0) + " pending topic(s).", false);
+        loadQueue();
+      } catch (err) {
+        showMsg("listMsg", err.message, true);
+      } finally {
+        btn.disabled = false; btn.textContent = "Run Pending";
+      }
+    }
+
+    async function loadQueue() {
+      const container = document.getElementById("queueList");
+      container.innerHTML = '<p class="muted">Loading queue...</p>';
+      try {
+        const res = await srApi({ action: "list" });
+        const items = res.items || [];
+        if (!items.length) {
+          container.innerHTML = '<p class="muted">No topics queued yet. Add your first idea above.</p>';
+          return;
+        }
+        container.innerHTML = "";
+        items.forEach(it => {
+          const row = document.createElement("div");
+          row.className = "item";
+
+          const top = document.createElement("div");
+          top.className = "item-top";
+
+          const left = document.createElement("div");
+          const badge = document.createElement("span");
+          badge.className = "badge " + (it.status === "DONE" ? "badge-done" : it.status === "ERROR" ? "badge-err" : "badge-pend");
+          badge.textContent = it.status;
+
+          const title = document.createElement("strong");
+          title.style.fontSize = "14px";
+          title.style.marginLeft = "6px";
+          title.textContent = it.topic;
+
+          left.appendChild(badge);
+          left.appendChild(title);
+
+          const delBtn = document.createElement("button");
+          delBtn.className = "ghost ghost-danger";
+          delBtn.type = "button";
+          delBtn.textContent = "Del";
+          delBtn.onclick = () => deleteTopic(it.id);
+
+          top.appendChild(left);
+          top.appendChild(delBtn);
+          row.appendChild(top);
+
+          const meta = document.createElement("div");
+          meta.className = "muted";
+          meta.style.marginTop = "6px";
+          meta.textContent = (it.engine ? it.engine + " • " : "") + (it.completedAt || it.addedAt) + (it.notes ? " • " + it.notes : "");
+          row.appendChild(meta);
+
+          if (it.status === "DONE" && it.docUrl) {
+            const actions = document.createElement("div");
+            actions.className = "btn-row";
+            actions.style.marginTop = "8px";
+
+            const readBtn = document.createElement("button");
+            readBtn.className = "ghost";
+            readBtn.type = "button";
+            readBtn.textContent = "Read Brief";
+            readBtn.onclick = () => openBriefReader(it.topic, it.docUrl);
+
+            const docLink = document.createElement("a");
+            docLink.className = "ghost";
+            docLink.href = it.docUrl;
+            docLink.target = "_blank";
+            docLink.rel = "noopener";
+            docLink.textContent = "Google Doc";
+
+            actions.appendChild(readBtn);
+            actions.appendChild(docLink);
+            row.appendChild(actions);
+          }
+
+          container.appendChild(row);
+        });
+      } catch (err) {
+        container.innerHTML = "";
+        showMsg("listMsg", err.message, true);
+      }
+    }
+
+    async function openBriefReader(topic, docUrl) {
+      const card = document.getElementById("readerCard");
+      const body = document.getElementById("readerBody");
+      document.getElementById("readerTitle").textContent = topic;
+      document.getElementById("readerDocLink").href = docUrl;
+      body.textContent = "Loading formatted brief from Google Docs...";
+      card.classList.remove("hidden");
+      card.scrollIntoView({ behavior: "smooth", block: "start" });
+
+      try {
+        const res = await srApi({ action: "read_brief", docUrl: docUrl });
+        currentBriefRawText = res.text || "";
+        body.textContent = currentBriefRawText || "(Empty document)";
+      } catch (err) {
+        body.textContent = "Could not load brief: " + err.message;
+      }
+    }
+
+    function closeReader() {
+      document.getElementById("readerCard").classList.add("hidden");
+    }
+
+    function copyBriefText(btn) {
+      if (!currentBriefRawText) return;
+      navigator.clipboard.writeText(currentBriefRawText);
+      const orig = btn.textContent;
+      btn.textContent = "Copied";
+      setTimeout(() => btn.textContent = orig, 1400);
+    }
+
+    async function deleteTopic(id) {
+      try {
+        await srApi({ action: "delete_topic", id: id });
+        loadQueue();
+      } catch (err) {
+        showMsg("listMsg", err.message, true);
+      }
+    }
+
+    function showMsg(id, text, isErr) {
+      const el = document.getElementById(id);
+      el.textContent = text;
+      el.className = "alert " + (isErr ? "alert-err" : "alert-ok");
+    }
+  </script>
+</body>
+</html>
