@@ -1,4 +1,4 @@
-const CACHE_NAME = "command-hub-v1";
+const CACHE_NAME = "command-hub-v2";
 const SHELL_ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", event => {
