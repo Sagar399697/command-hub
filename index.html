@@ -449,13 +449,15 @@
         grid.innerHTML = '<p class="muted" style="grid-column:1/-1;margin:0;">No pinned tools yet. Add your B5 Vault or C3 TOTP link below.</p>';
         return;
       }
-      grid.innerHTML = list.map(sc => `
-        <a class="app-tile" href="${esc(sc.url)}" target="_blank" rel="noopener">
-          <button class="app-del" type="button" title="Remove" onclick="event.preventDefault();deleteShortcut('${esc(sc.app_id)}')">×</button>
+      grid.innerHTML = list.map(sc => {
+        const isNative = sc.url.startsWith(window.location.origin) || sc.url.startsWith("./");
+        const targetAttr = isNative ? "" : ' target="_blank" rel="noopener"';
+        return `<a class="app-tile" href="${esc(sc.url)}"${targetAttr}>
+          <button class="app-del" type="button" title="Remove" onclick="event.preventDefault();deleteShortcut('${esc(sc.app_id)}')">x</button>
           <span class="badge" style="width:fit-content;">${esc(sc.badge || "TOOL")}</span>
           <strong style="font-size:14px;margin-top:10px;">${esc(sc.name)}</strong>
-        </a>
-      `).join("");
+        </a>`;
+      }).join("");
     }
 
     async function handleAddShortcut() {
