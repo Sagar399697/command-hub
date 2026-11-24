@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>Compute Mesh</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" type="image/png" href="./icon-192.png">
+  <style>
+    :root {
+      --bg: #f8fafc; --surface: #ffffff; --border: #e2e8f0;
+      --ink: #0f172a; --body: #334155; --muted: #64748b; --accent: #1d4ed8;
+      --ok: #15803d; --ok-bg: #f0fdf4; --warn: #b45309; --warn-bg: #fffbeb;
+      --danger: #b91c1c; --danger-bg: #fef2f2;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      margin: 0; background: var(--bg); color: var(--ink);
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      padding-bottom: 36px;
+    }
+    header {
+      position: sticky; top: 0; z-index: 20; background: #0f172a; color: #fff;
+      padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    }
+    .hdr-left { display: flex; align-items: center; gap: 10px; }
+    .back-btn {
+      text-decoration: none; color: #fff; background: rgba(255,255,255,0.14);
+      padding: 6px 10px; border-radius: 7px; font-size: 12.5px; font-weight: 600;
+    }
+    header h1 { margin: 0; font-size: 15.5px; font-weight: 600; letter-spacing: -0.01em; }
+    .pill {
+      font-size: 11px; font-weight: 600; padding: 5px 10px; border-radius: 999px;
+      background: rgba(255,255,255,0.14); color: #fff; border: none; cursor: pointer;
+    }
+    main { max-width: 620px; margin: 0 auto; padding: 14px 12px; }
+    .card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      padding: 15px; margin-bottom: 12px;
+    }
+    .kpi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 12px; }
+    .kpi {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      padding: 12px; text-align: left;
+    }
+    .kpi-val { font-size: 22px; font-weight: 700; color: var(--ink); line-height: 1.1; }
+    .kpi-lbl { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; margin-top: 4px; }
+    label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin: 10px 0 4px; }
+    input, select, textarea {
+      width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+      font-size: 15px; font-family: inherit; color: var(--ink); background: #fff;
+    }
+    textarea { min-height: 82px; resize: vertical; }
+    .btn-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+    button.primary {
+      flex: 1; min-width: 125px; min-height: 44px; padding: 10px 14px; border: none; border-radius: 8px;
+      background: var(--accent); color: #fff; font-size: 13.5px; font-weight: 600; cursor: pointer;
+    }
+    button.secondary {
+      flex: 1; min-width: 125px; min-height: 44px; padding: 10px 14px; border: 1px solid var(--accent); border-radius: 8px;
+      background: #eff6ff; color: var(--accent); font-size: 13.5px; font-weight: 600; cursor: pointer;
+    }
+    button.ghost {
+      padding: 7px 11px; min-height: 34px; border: 1px solid var(--border); border-radius: 7px;
+      background: #fff; color: var(--ink); font-size: 12px; font-weight: 600; cursor: pointer;
+    }
+    button:disabled { opacity: 0.55; cursor: not-allowed; }
+    .alert { padding: 10px 12px; border-radius: 8px; font-size: 13px; margin-top: 10px; }
+    .alert-ok { background: var(--ok-bg); color: var(--ok); border: 1px solid #bbf7d0; }
+    .alert-err { background: var(--danger-bg); color: var(--danger); border: 1px solid #fecaca; }
+    .row-item { border-bottom: 1px solid var(--border); padding: 10px 0; }
+    .row-item:last-child { border-bottom: none; padding-bottom: 0; }
+    .row-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .badge { font-size: 10px; font-weight: 700; text-transform: uppercase; padding: 2px 7px; border-radius: 999px; background: #eff6ff; color: var(--accent); }
+    .b-ok { background: var(--ok-bg); color: var(--ok); }
+    .b-warn { background: var(--warn-bg); color: var(--warn); }
+    .b-err { background: var(--danger-bg); color: var(--danger); }
+    .muted { font-size: 12px; color: var(--muted); }
+    .out-preview {
+      margin-top: 5px; font-size: 12.5px; color: var(--body); background: var(--bg);
+      border: 1px solid var(--border); border-radius: 6px; padding: 7px 9px; word-break: break-word;
+    }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="hdr-left">
+      <a class="back-btn" href="./index.html">← Hub</a>
+      <h1>Compute Mesh</h1>
+    </div>
+    <button class="pill" type="button" onclick="toggleSetup()">Setup</button>
+  </header>
+
+  <main>
+    <!-- API SETUP (Stored locally on device) -->
+    <div id="setupCard" class="card hidden">
+      <strong style="font-size:14px;">Connect Mesh-Master-Balancer API</strong>
+      <p class="muted" style="margin:4px 0 8px;">Use the plain <code>/macros/s/.../exec</code> URL from <strong>Mesh-Master-Balancer</strong> (never <code>/a/*</code>).</p>
+      <label for="cfgUrl">Master Web App URL (/exec)</label>
+      <input id="cfgUrl" type="url" placeholder="https://script.google.com/macros/s/.../exec">
+      <label for="cfgSecret">MASTER_API_SECRET (or MESH_SECRET)</label>
+      <input id="cfgSecret" type="password" placeholder="Your secret from Master Script Properties">
+      <div class="btn-row">
+        <button id="btnConnect" class="primary" type="button" onclick="saveAndConnect()">Save & Connect</button>
+      </div>
+      <div id="cfgMsg" class="hidden"></div>
+    </div>
+
+    <!-- CLUSTER QUOTA KPIs -->
+    <div class="kpi-grid">
+      <div class="kpi"><div id="kpiNodes" class="kpi-val">--</div><div class="kpi-lbl">Healthy Nodes</div></div>
+      <div class="kpi"><div id="kpiEmails" class="kpi-val">--</div><div class="kpi-lbl">Emails Left Today</div></div>
+      <div class="kpi"><div id="kpiGemini" class="kpi-val">--</div><div class="kpi-lbl">Free AI Nodes</div></div>
+      <div class="kpi"><div id="kpiPending" class="kpi-val">--</div><div class="kpi-lbl">Pending Jobs</div></div>
+    </div>
+
+    <!-- WORKER NODES HEALTH -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+        <strong style="font-size:14px;">Cluster Worker Nodes</strong>
+        <div style="display:flex;gap:6px;">
+          <button id="btnPingAll" class="ghost" type="button" onclick="runHealthPing()">Ping All Nodes</button>
+          <button class="ghost" type="button" onclick="loadDashboard()">Refresh</button>
+        </div>
+      </div>
+      <div id="nodeMsg" class="hidden"></div>
+      <div id="nodeList"><p class="muted">Tap Setup to connect your Master Load Balancer.</p></div>
+    </div>
+
+    <!-- QUICK BATCH JOB LAUNCHER -->
+    <div class="card">
+      <strong style="font-size:14px;">Launch Distributed Batch Job</strong>
+      <label for="jobType">Job Type</label>
+      <select id="jobType" onchange="updateJobPlaceholders()">
+        <option value="scrape">Parallel Web Scrape (1 URL per line)</option>
+        <option value="gemini">Distributed Free Gemini Prompts (1 prompt per line)</option>
+        <option value="email">Distributed Email Queue (1 email address per line)</option>
+      </select>
+      <label for="jobInputs">Inputs (One per line — split evenly across all healthy nodes)</label>
+      <textarea id="jobInputs" placeholder="https://example.com
+https://news.ycombinator.com"></textarea>
+      <label for="jobExtra">Shared Extra Instruction / Email Subject || Body (Optional)</label>
+      <input id="jobExtra" type="text" placeholder="Optional: system instruction or Subject || Message body">
+      <div class="btn-row">
+        <button id="btnQueueOnly" class="secondary" type="button" onclick="submitJobs(false)">Queue Only</button>
+        <button id="btnQueueRun" class="primary" type="button" onclick="submitJobs(true)">Queue & Fan-Out Now</button>
+      </div>
+      <div id="jobMsg" class="hidden"></div>
+    </div>
+
+    <!-- RECENT JOBS & CLUSTER RUN LOGS -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;">
+        <strong style="font-size:14px;">Recent Cluster Jobs</strong>
+        <button id="btnDrain" class="ghost" type="button" onclick="triggerDispatch()">Drain Pending</button>
+      </div>
+      <div id="jobsList"><p class="muted">No jobs loaded yet.</p></div>
+    </div>
+
+    <div class="card">
+      <strong style="font-size:14px;">Parallel Run Benchmarks</strong>
+      <div id="logsList" style="margin-top:6px;"><p class="muted">No run logs yet.</p></div>
+    </div>
+  </main>
+
+  <script>
+    const MESH_CFG_KEY = "c4_mesh_cluster_cfg";
+
+    function getCfg() {
+      try { return JSON.parse(localStorage.getItem(MESH_CFG_KEY) || "{}"); } catch (e) { return {}; }
+    }
+
+    async function meshApi(payload) {
+      const cfg = getCfg();
+      if (!cfg.url || !cfg.secret) throw new Error("Tap Setup (top right) to configure your Mesh Master URL and secret.");
+      const res = await fetch(cfg.url, {
+        method: "POST",
+        credentials: "omit",
+        redirect: "follow",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(Object.assign({ secret: cfg.secret }, payload))
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error || "Mesh API error.");
+      return json;
+    }
+
+    window.addEventListener("load", function() {
+      const cfg = getCfg();
+      if (cfg.url) document.getElementById("cfgUrl").value = cfg.url;
+      if (cfg.secret) document.getElementById("cfgSecret").value = cfg.secret;
+      if (!cfg.url || !cfg.secret) document.getElementById("setupCard").classList.remove("hidden");
+      else loadDashboard();
+    });
+
+    function toggleSetup() {
+      document.getElementById("setupCard").classList.toggle("hidden");
+    }
+
+    function updateJobPlaceholders() {
+      const t = document.getElementById("jobType").value;
+      const inp = document.getElementById("jobInputs");
+      const ext = document.getElementById("jobExtra");
+      if (t === "scrape") {
+        inp.placeholder = "https://site1.com\nhttps://site2.com\nhttps://site3.com";
+        ext.placeholder = "Optional notes";
+      } else if (t === "gemini") {
+        inp.placeholder = "Summarize pricing model of Company A\nSummarize pricing model of Company B";
+        ext.placeholder = "Optional shared instruction applied to every line (e.g., Answer in 3 crisp bullets)";
+      } else {
+        inp.placeholder = "contact1@college.edu\ncontact2@college.edu";
+        ext.placeholder = "Email Subject || Plain text body message";
+      }
+    }
+
+    async function saveAndConnect() {
+      const url = document.getElementById("cfgUrl").value.trim();
+      const secret = document.getElementById("cfgSecret").value.trim();
+      if (!url || !secret) return showMsg("cfgMsg", "Enter both Master /exec URL and secret.", true);
+      if (url.includes("/a/*/")) return showMsg("cfgMsg", "Remove /a/* — use plain https://script.google.com/macros/s/.../exec.", true);
+
+      const btn = document.getElementById("btnConnect");
+      btn.disabled = true; btn.textContent = "Connecting...";
+      localStorage.setItem(MESH_CFG_KEY, JSON.stringify({ url: url, secret: secret }));
+      try {
+        const res = await meshApi({ action: "ping" });
+        showMsg("cfgMsg", "Connected cleanly! Master IST: " + res.server_time_ist, false);
+        setTimeout(() => document.getElementById("setupCard").classList.add("hidden"), 700);
+        loadDashboard();
+      } catch (err) {
+        showMsg("cfgMsg", err.message, true);
+      } finally {
+        btn.disabled = false; btn.textContent = "Save & Connect";
+      }
+    }
+
+    async function loadDashboard() {
+      try {
+        const res = await meshApi({ action: "dashboard" });
+        renderDashboard(res.data);
+      } catch (err) {
+        showMsg("nodeMsg", err.message, true);
+      }
+    }
+
+    async function runHealthPing() {
+      const btn = document.getElementById("btnPingAll");
+      btn.disabled = true; btn.textContent = "Pinging...";
+      document.getElementById("nodeMsg").classList.add("hidden");
+      try {
+        const res = await meshApi({ action: "health" });
+        renderDashboard(res.data);
+        showMsg("nodeMsg", "HMAC health check complete across all nodes.", false);
+      } catch (err) {
+        showMsg("nodeMsg", err.message, true);
+      } finally {
+        btn.disabled = false; btn.textContent = "Ping All Nodes";
+      }
+    }
+
+    async function triggerDispatch() {
+      const btn = document.getElementById("btnDrain");
+      btn.disabled = true; btn.textContent = "Running...";
+      try {
+        const res = await meshApi({ action: "dispatch" });
+        renderDashboard(res.data);
+        const r = res.result || {};
+        showMsg("jobMsg", `Dispatched ${r.dispatched || 0} job(s) (${r.ok || 0} ok, ${r.failed || 0} failed).`, false);
+      } catch (err) {
+        showMsg("jobMsg", err.message, true);
+      } finally {
+        btn.disabled = false; btn.textContent = "Drain Pending";
+      }
+    }
+
+    async function submitJobs(runNow) {
+      const type = document.getElementById("jobType").value;
+      const lines = document.getElementById("jobInputs").value.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+      const extra = document.getElementById("jobExtra").value.trim();
+      if (!lines.length) return showMsg("jobMsg", "Enter at least one line above.", true);
+
+      const b1 = document.getElementById("btnQueueOnly");
+      const b2 = document.getElementById("btnQueueRun");
+      b1.disabled = true; b2.disabled = true;
+      if (runNow) b2.textContent = "Fanning out...";
+
+      try {
+        const res = await meshApi({ action: "add_jobs", type: type, inputs: lines, extra: extra, run_now: runNow });
+        document.getElementById("jobInputs").value = "";
+        renderDashboard(res.data);
+        const msg = runNow
+          ? `Queued ${res.added} & finished fan-out (${(res.result && res.result.ok) || 0} succeeded).`
+          : `Queued ${res.added} ${type} job(s) in JobQueue.`;
+        showMsg("jobMsg", msg, false);
+      } catch (err) {
+        showMsg("jobMsg", err.message, true);
+      } finally {
+        b1.disabled = false; b2.disabled = false;
+        b2.textContent = "Queue & Fan-Out Now";
+      }
+    }
+
+    function renderDashboard(data) {
+      if (!data) return;
+      const s = data.summary || {};
+      document.getElementById("kpiNodes").textContent = `${s.healthyCount || 0}/${s.totalNodes || 0}`;
+      document.getElementById("kpiEmails").textContent = String(s.totalRemainingEmails || 0);
+      document.getElementById("kpiGemini").textContent = String(s.geminiNodes || 0);
+      document.getElementById("kpiPending").textContent = String(s.pendingJobs || 0);
+
+      // Nodes List
+      const nEl = document.getElementById("nodeList");
+      nEl.textContent = "";
+      if (!data.nodes || !data.nodes.length) {
+        const p = document.createElement("p"); p.className = "muted"; p.textContent = "No worker nodes registered in Nodes tab yet.";
+        nEl.appendChild(p);
+      } else {
+        data.nodes.forEach(n => {
+          const row = document.createElement("div"); row.className = "row-item";
+          const top = document.createElement("div"); top.className = "row-top";
+          const name = document.createElement("strong"); name.style.fontSize = "13.5px"; name.textContent = n.name;
+          const badge = document.createElement("span");
+          badge.className = "badge " + (n.status === "HEALTHY" ? "b-ok" : n.status === "ERROR" ? "b-err" : "b-warn");
+          badge.textContent = n.enabled ? n.status : "DISABLED";
+          top.appendChild(name); top.appendChild(badge);
+          row.appendChild(top);
+
+          const meta = document.createElement("div"); meta.className = "muted"; meta.style.marginTop = "4px";
+          meta.textContent = `Emails left: ${n.remainingEmails} • Gemini: ${n.hasGemini ? "YES" : "NO"}${n.latencyMs ? " • " + n.latencyMs + "ms" : ""}`;
+          row.appendChild(meta);
+
+          if (n.lastError) {
+            const err = document.createElement("div"); err.className = "muted"; err.style.color = "#b91c1c"; err.textContent = n.lastError;
+            row.appendChild(err);
+          }
+          nEl.appendChild(row);
+        });
+      }
+
+      // Recent Jobs
+      const jEl = document.getElementById("jobsList");
+      jEl.textContent = "";
+      if (!data.recentJobs || !data.recentJobs.length) {
+        const p = document.createElement("p"); p.className = "muted"; p.textContent = "No jobs in JobQueue yet.";
+        jEl.appendChild(p);
+      } else {
+        data.recentJobs.forEach(j => {
+          const row = document.createElement("div"); row.className = "row-item";
+          const top = document.createElement("div"); top.className = "row-top";
+          const left = document.createElement("div");
+          const b = document.createElement("span");
+          b.className = "badge " + (j.status === "DONE" ? "b-ok" : j.status === "ERROR" ? "b-err" : "b-warn");
+          b.textContent = `${j.type} • ${j.status}`;
+          const nodeTag = document.createElement("span"); nodeTag.className = "muted"; nodeTag.style.marginLeft = "6px";
+          nodeTag.textContent = j.node ? `[${j.node}]` : "";
+          left.appendChild(b); left.appendChild(nodeTag);
+          top.appendChild(left);
+          row.appendChild(top);
+
+          const inp = document.createElement("div"); inp.style.fontSize = "13px"; inp.style.fontWeight = "600"; inp.style.marginTop = "4px";
+          inp.textContent = j.input;
+          row.appendChild(inp);
+
+          if (j.output) {
+            const out = document.createElement("div"); out.className = "out-preview"; out.textContent = j.output;
+            row.appendChild(out);
+          }
+          jEl.appendChild(row);
+        });
+      }
+
+      // Run Logs
+      const lEl = document.getElementById("logsList");
+      lEl.textContent = "";
+      if (!data.logs || !data.logs.length) {
+        const p = document.createElement("p"); p.className = "muted"; p.textContent = "No parallel runs logged yet.";
+        lEl.appendChild(p);
+      } else {
+        data.logs.forEach(l => {
+          const row = document.createElement("div"); row.className = "row-item";
+          const line1 = document.createElement("div"); line1.style.fontSize = "12.5px"; line1.style.fontWeight = "600";
+          line1.textContent = `${l.type} • ${l.ok}/${l.sent} ok across ${l.nodesUsed} node(s) in ${l.ms}ms`;
+          const line2 = document.createElement("div"); line2.className = "muted";
+          line2.textContent = `${l.time} — ${l.notes}`;
+          row.appendChild(line1); row.appendChild(line2);
+          lEl.appendChild(row);
+        });
+      }
+    }
+
+    function showMsg(id, text, isErr) {
+      const el = document.getElementById(id);
+      el.textContent = text;
+      el.className = "alert " + (isErr ? "alert-err" : "alert-ok");
+    }
+  </script>
+</body>
+</html>
